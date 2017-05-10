@@ -11,12 +11,14 @@ import threading
 from serial import *
 import time
 import sys
+import tkMessageBox
 
 CMDSTATE_R00 = 0 #idle
 CMDSTATE_R01 = 1 #running
 CMDSTATE_R02 = 2 #end success
 CMDSTATE_R03 = 3 #end with error
 CMDSTATE_R04 = 4 #running
+CMDSTATE_R82 = 82 #display the X Y Z position
 
 RUNMODE_CHECKIF = 1
 RUNMODE_VERIFY_CMDS=2
@@ -28,6 +30,8 @@ class CmdState:
         self.cmd_curpar = ""
         self.cmd_str = ""
         self.cmd_state = CMDSTATE_R00
+        self.strCurX= "-1"
+        self.strCurY= "-1"
 
     def is_ready(self):
         if self.cmd_state == CMDSTATE_R00 or self.cmd_state == CMDSTATE_R02 or self.cmd_state == CMDSTATE_R03:
@@ -35,24 +39,39 @@ class CmdState:
         else:
             return False
 
+    def return_state(self):
+        if self.cmd_state == CMDSTATE_R00 or self.cmd_state == CMDSTATE_R02 or self.cmd_state == CMDSTATE_R03:
+            return 0
+        elif self.cmd_state == CMDSTATE_R82:
+            return 1
+        else:
+            return -1
+
     def set_by_send(self, cmd_str):
         if self.is_ready():
             self.cmd_state = CMDSTATE_R00
             self.cmd_str =  cmd_str
         
     def set_by_recv(self, cmd_str):
-        cmd_str1 = cmd_str.strip()
-        if cmd_str1 == "R00":
+        cmd_str1 = cmd_str.strip().split(" ")
+        #print cmd_str1,', ', cmd_str
+        if cmd_str1[0] == "R00":
             self.cmd_state = CMDSTATE_R00
-        if cmd_str1 == "R01":
+        if cmd_str1[0] == "R01":
             self.cmd_state = CMDSTATE_R01
-        if cmd_str1 == "R02":
+        if cmd_str1[0] == "R02":
             self.cmd_state = CMDSTATE_R02
-        if cmd_str1 == "R03":
+        if cmd_str1[0] == "R03":
             self.cmd_state = CMDSTATE_R03
-        if cmd_str1 == "R04":
+        if cmd_str1[0] == "R04":
             self.cmd_state = CMDSTATE_R04
-        self.cmd_str = cmd_str
+        if cmd_str1[0] == "R82":
+            #self.cmd_state = CMDSTATE_R82
+            self.strCurX= cmd_str1[1].strip('X')
+            self.strCurY= cmd_str1[2].strip('Y')
+            #print cmd_str1[1],', ',cmd_str1[2]
+
+        self.cmd_str = cmd_str.strip()
         #print("state by recv:%i" %(self.cmd_state))
 
 # Serial process thread
@@ -63,7 +82,12 @@ class MonitorThread(threading.Thread):
         self.event = threading.Event()
         self.wait = wait
         self.exit = False
-        self.ser = Serial('/dev/ttyACM0', 115200, timeout=1) #FIXME, change device id to your system device
+        try:
+            self.ser = Serial('/dev/ttyACM0', 115200, timeout=1) #FIXME, change device id to your system device
+        except:
+            print 'Connection of Arduino refused!'
+            tkMessageBox.showerror("Error","Connection of Arduino refused!")
+        
         self.cmd_state = CmdState()
 
     def set_ts(self, ts):
