@@ -1,5 +1,5 @@
 ### StepperControl
-The python code with GUI to load  from and send command to Aruduino
+The python code with GUI to to display current position (in step unit) and move the motor to specific loaction
 ```command line: 
 python gui_main.py
 ```
