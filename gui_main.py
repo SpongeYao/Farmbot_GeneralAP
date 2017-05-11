@@ -20,17 +20,29 @@ class App:
     def __init__(self , queue, frame , width , height , root):
         self.ArdMntr= MonitorThread()
         self.ArdMntr.start()
+            
         myfont14 = tkFont.Font(family="Verdana", size=14)
         myfont12 = tkFont.Font(family="Verdana", size=12)
+        myfont10 = tkFont.Font(family="Verdana", size=10)
         self.root = root
         
         self.screen_width, self.screen_height = width, height
-        #self.frame_width, self.frame_height= int(width*0.79), height
         btn_width, btn_height= 15, 1
         self.interval_x, self.interval_y= 6, 6
         #print width,',', height,' ; ',btn_width,',', btn_height
         
-        # ====== Configuration ============
+        # ====== [Config] Menu Bar============
+        self.menubar= Tkinter.Menu(self.root)
+        self.FileMenu = Tkinter.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="File",underline=0, menu=self.FileMenu)
+        self.FileMenu.add_command(label="Save Image", command=self.btn_saveImg_click)
+        self.ConnectMenu = Tkinter.Menu(self.menubar, tearoff=0)
+        self.ConnectMenu.add_command(label="Connect to Arduino", command=self.set_ArdConnect)
+        self.menubar.add_cascade(label="Communcation", underline= 0, menu=self.ConnectMenu)
+
+        self.root.config(menu= self.menubar)
+        self.root.update()
+        # ====== [Config] Button ===========
         self.lbl_CurrCoord= Tkinter.Label(self.root, text="[ Current Position ]",     font= myfont14)
         self.lbl_CurrCoord.place(x= self.interval_x, y= self.interval_y)
         self.root.update()
@@ -62,16 +74,16 @@ class App:
         self.btn_MoveTo.place(x= self.lbl_Xpos.winfo_x(), y=self.lbl_Ypos.winfo_y()+ self.lbl_Ypos.winfo_height()+ self.interval_y)
         self.root.update()
 
-        self.btn_clear= Tkinter.Button(self.root, text='Clear Image', command= self.btn_clear_click,font= myfont14, width= btn_width, height= btn_height)
-        #self.btn_clear.grid(row=0, column=1, sticky = Tkinter.W)
-        self.btn_clear.place(x= self.lbl_MoveCoord.winfo_x(), y= self.screen_height- 120)
-        self.root.update()
         self.btn_saveImg= Tkinter.Button(self.root, text='Save Image', command= self.btn_saveImg_click,font= myfont14, width= btn_width, height= btn_height)
-        self.btn_saveImg.place(x= self.lbl_MoveCoord.winfo_x(), y= self.screen_height- btn_height- 70)
+        self.btn_saveImg.place(x= self.lbl_MoveCoord.winfo_x(), y= self.screen_height-self.FileMenu.winfo_reqheight()-self.btn_MoveTo.winfo_reqheight()-self.interval_y*6)
         self.root.update()
-
+        
+        self.btn_clear= Tkinter.Button(self.root, text='Clear Image', command= self.btn_clear_click,font= myfont14, width= btn_width, height= btn_height)
+        self.btn_clear.place(x= self.lbl_MoveCoord.winfo_x(), y= self.btn_saveImg.winfo_y()- self.btn_saveImg.winfo_height()- self.interval_y)
+        self.root.update()
+        
         #===== Image Frame ======
-        self.frame_width, self.frame_height= self.screen_width-self.lbl_MoveCoord.winfo_width()- self.interval_x*4, height-5
+        self.frame_width, self.frame_height= self.screen_width-self.lbl_MoveCoord.winfo_width()- (self.interval_x*11), self.screen_height-self.FileMenu.winfo_reqheight()-self.interval_y*6
         frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
         result = Image.fromarray(frame)
         result = ImageTk.PhotoImage(result)
@@ -103,11 +115,16 @@ class App:
             self.root.destroy()
 
     def UI_callback(self):
-        tmp_text= '(X, Y)= ('+self.ArdMntr.cmd_state.strCurX+', '+self.ArdMntr.cmd_state.strCurY+')'
+        if self.ArdMntr.connect== True:
+            tmp_text= '(X, Y)= ('+self.ArdMntr.cmd_state.strCurX+', '+self.ArdMntr.cmd_state.strCurY+')'
+        else:
+            tmp_text='Arduino Connection Refuesed!'
+
         self.lbl_CurrPos.config(text= tmp_text)
         self.lbl_CurrPos.after(10,self.UI_callback)
-        #if self.ArdMntr.cmd_state.is_ready():
-            #return 0
+    
+    def set_ArdConnect(self):
+        self.ArdMntr.connect_serial()
 
     def store(self):
         data = dict()
@@ -118,7 +135,6 @@ class App:
         with open("detect_area.json" , 'w') as out:
             json.dump(data , out)
         print "detect area set"
-        #self.scales.destroy()
 
     def set_frame(self, frame):
         self.frame= frame
@@ -126,13 +142,11 @@ class App:
     
     def btn_saveImg_click(self):
         self.saveImg= True
-        #cv2.imwrite('Frame1.png',frame)
 
     def btn_MoveTo_click(self):
         try:
             Target_X= int(self.entry_Xpos.get())
             Target_Y= int(self.entry_Ypos.get())
-            #print Target_X, ' , ', Target_Y 
             if (Target_X>=0) & (Target_X<=8000) & (Target_Y>=0) & (Target_Y<=9500):
                 cmd= 'G00 X{0} Y{1}'.format(Target_X, Target_Y)
                 self.ArdMntr.serial_send(cmd)
@@ -158,42 +172,45 @@ class App:
 
 
     def check_queue(self):
+        '''	
         try:
             frame = self.queue.get(block=False)
         except Queue.Empty:
             pass
         else:
-            angle_beg=0
-            angle_end=0
-            frame = self.mark_cross_line(frame)
-	    frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
-
-            if self.saveImg== True:
-                tmp= cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                cv2.imwrite('Frame1.png',tmp)
-                self.saveImg= False
-            text=''
+	    angle_beg=0
+        '''
+        angle_end=0
+        #frame = self.mark_cross_line(frame)
+        frame = self.mark_cross_line(self.frame)
+	frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
+	
+        if self.saveImg== True:
+            tmp= cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            cv2.imwrite('Frame1.png',tmp)
+            self.saveImg= False
+        text='Arduino Connection Refused ...'
+        color= (0,0,0)
+        if self.ArdMntr.connect== True:
             if self.ArdMntr.cmd_state.is_ready():
                 text= 'Idling ...'
                 color = (0 , 255 , 0)
             else:
                 text= 'Moving ...'
                 color = (255,0,0)
-            #text= text + '('+self.ArdMntr.cmd_state.strCurX+', '+self.ArdMntr.cmd_state.strCurY+')'
-            cv2.putText(frame, text,(10,40),cv2.FONT_HERSHEY_SIMPLEX, 1,color,2)
-            result = Image.fromarray(frame)
-            result = ImageTk.PhotoImage(result)
-            self.panel.configure(image = result)
-            self.panel.image = result
+        cv2.putText(frame, text,(10,40),cv2.FONT_HERSHEY_SIMPLEX, 1,color,2)
+        result = Image.fromarray(frame)
+        result = ImageTk.PhotoImage(result)
+        self.panel.configure(image = result)
+        self.panel.image = result
         self.panel.after(1, self.check_queue)
 
 def queue_create(queue, running , app , cap):
-    #global cap
     while running:
         ret , frame = cap.read()
         frame = cv2.cvtColor(frame , cv2.COLOR_BGR2RGB)
-        queue.put(frame)
-        #app.set_frame(frame)
+        #queue.put(frame)
+        app.set_frame(frame)
         time.sleep(0.01)
 
 def run(cap):
@@ -206,7 +223,7 @@ def run(cap):
 
     queue = Queue.LifoQueue(5)
     ret , frame = cap.read()
-    
+    print root.winfo_screenwidth() ,', ', root.winfo_screenheight()    
     app = App(queue , frame, root.winfo_screenwidth() , root.winfo_screenheight(), root)
     app.panel.bind('<Destroy>', lambda x: (running.pop(), x.widget.destroy()))
 

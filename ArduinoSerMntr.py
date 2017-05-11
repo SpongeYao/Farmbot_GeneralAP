@@ -82,13 +82,25 @@ class MonitorThread(threading.Thread):
         self.event = threading.Event()
         self.wait = wait
         self.exit = False
+        self.connect = True
         try:
             self.ser = Serial('/dev/ttyACM0', 115200, timeout=1) #FIXME, change device id to your system device
         except:
             print 'Connection of Arduino refused!'
             tkMessageBox.showerror("Error","Connection of Arduino refused!")
-        
+            self.connect= False        
         self.cmd_state = CmdState()
+
+    def connect_serial(self):
+        if not(self.connect):
+            try:
+                self.ser = Serial('/dev/ttyACM0', 115200, timeout=1) #FIXME, cha    nge device id to your system device
+                self.connect= True
+            except:
+                print 'Connection of Arduino refused!'
+                tkMessageBox.showerror("Error","Connection of Arduino refused!")
+        else: 
+            tkMessageBox.showerror("Error","Connection of Arduino is already built!")
 
     def set_ts(self, ts):
         self.wait = ts
@@ -104,11 +116,17 @@ class MonitorThread(threading.Thread):
     
     def run(self):
         while 1:
+            if self.connect:
+                try:
+                    self.do_function()
+                    self.event.wait(self.wait)
+                except:
+                    self.connect= False
+            else:
+                time.sleep(0.1)
+            
             if self.exit:
                 break
-                # Wait for a connection
-            self.do_function()
-            self.event.wait(self.wait)
 
     def serial_send(self,send_str):
         sys.stdout.write("[%s]\n" % send_str)

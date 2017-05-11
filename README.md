@@ -1,5 +1,6 @@
 ### StepperControl
 The python code with GUI to load  from and send command to Aruduino
+> The communication between Arduino and PC will be automatically built in the beginning. If the connection is failed, it can be re-built again by clicking the 'Connect to Arduino' button in menubar
 ```command line: 
 python gui_main.py
 ```
