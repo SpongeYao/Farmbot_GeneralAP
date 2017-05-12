@@ -75,21 +75,21 @@ class App:
         self.root.update()
 
         self.btn_saveImg= Tkinter.Button(self.root, text='Save Image', command= self.btn_saveImg_click,font= myfont14, width= btn_width, height= btn_height)
-        self.btn_saveImg.place(x= self.lbl_MoveCoord.winfo_x(), y= self.screen_height-self.FileMenu.winfo_reqheight()-self.btn_MoveTo.winfo_reqheight()-self.interval_y*6)
+        self.btn_saveImg.place(x= self.lbl_MoveCoord.winfo_x(), y= self.screen_height-self.FileMenu.winfo_reqheight()-self.btn_MoveTo.winfo_reqheight()-self.interval_y*2)
         self.root.update()
         
         self.btn_clear= Tkinter.Button(self.root, text='Clear Image', command= self.btn_clear_click,font= myfont14, width= btn_width, height= btn_height)
-        self.btn_clear.place(x= self.lbl_MoveCoord.winfo_x(), y= self.btn_saveImg.winfo_y()- self.btn_saveImg.winfo_height()- self.interval_y)
+        self.btn_clear.place(x= self.lbl_MoveCoord.winfo_x(), y= self.btn_saveImg.winfo_y()- self.btn_saveImg.winfo_height()- self.interval_y*2)
         self.root.update()
         
         #===== Image Frame ======
-        self.frame_width, self.frame_height= self.screen_width-self.lbl_MoveCoord.winfo_width()- (self.interval_x*11), self.screen_height-self.FileMenu.winfo_reqheight()-self.interval_y*6
+        self.frame_width, self.frame_height= self.screen_width-self.lbl_posUnit.winfo_x()- self.lbl_posUnit.winfo_width()- (self.interval_x*1), self.screen_height-self.FileMenu.winfo_reqheight()-self.interval_y*3
         frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
         result = Image.fromarray(frame)
         result = ImageTk.PhotoImage(result)
         self.panel = Tkinter.Label(self.root , image = result)
         self.panel.image = frame
-        self.panel.place(x=self.lbl_MoveCoord.winfo_width()+ self.interval_x*2, y= 0)
+        self.panel.place(x=self.lbl_posUnit.winfo_x()+ self.lbl_posUnit.winfo_width()+ self.interval_x*0, y= self.interval_y)
         #self.panel.grid(row=0, column=0)
         #self.panel.pack(side = Tkinter.LEFT)
 
@@ -105,6 +105,8 @@ class App:
         self.drawing= False
         self.x1, self.y1, self.x2, self.y2= -1,-1,-1,-1        
         self.line_info=[]
+        print '>> self screen: ',self.root.winfo_screenwidth() ,', ', self.root.winfo_screenheight()
+        print '>> self window: ',self.root.winfo_width(),', ', self.root.winfo_height()
 
     # Override CLOSE function
     def on_exit(self):
@@ -219,16 +221,25 @@ def run(cap):
     root = Tkinter.Tk()
     root.title("[Arduino] Stepper Control")
     root.attributes('-zoomed', True) # FullScreen
-
+    root.update()
+    #screenwidth, screenheight= root.winfo_screenwidth() , root.winfo_screenheight()   
+    #screenwidth, screenheight= 800,600
+    #root.geometry("400x300")
+    #root.geometry("{0}x{1}".format(screenwidth, screenheight))
 
     queue = Queue.LifoQueue(5)
     ret , frame = cap.read()
-    print root.winfo_screenwidth() ,', ', root.winfo_screenheight()    
-    app = App(queue , frame, root.winfo_screenwidth() , root.winfo_screenheight(), root)
+    print '>> screen: ',root.winfo_screenwidth() ,', ', root.winfo_screenheight()    
+    print '>> window: ',root.winfo_width(),', ', root.winfo_height()
+    screenwidth, screenheight= root.winfo_width() , root.winfo_height()   
+    #screenwidth, screenheight= 800,600
+    #app = App(queue , frame, root.winfo_screenwidth() , root.winfo_screenheight(), root)
+    app = App(queue , frame, screenwidth , screenheight, root)
     app.panel.bind('<Destroy>', lambda x: (running.pop(), x.widget.destroy()))
 
     thread = threading.Thread(target=queue_create, args=(queue, running , app , cap))
     thread.start()
+    print '>> window: ',root.winfo_width(),', ', root.winfo_height()
 
     root.mainloop()
 
