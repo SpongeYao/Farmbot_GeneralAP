@@ -11,22 +11,30 @@ import cv2
 import numpy as np
 from PIL import Image
 from PIL import ImageTk
+from os import listdir, path, makedirs, remove
 
-from ArduinoSerMntr import*
-
+from class_ArduinoSerMntr import*
+from class_CameraMntr import*
 
 class App:
     # Ininitalization
-    def __init__(self , queue, frame , width , height , root):
+    def __init__(self,root):
         self.ArdMntr= MonitorThread()
         self.ArdMntr.start()
-            
+        
+        self.CamMntr= CameraLink()
+
         myfont14 = tkFont.Font(family="Verdana", size=14)
         myfont12 = tkFont.Font(family="Verdana", size=12)
         myfont10 = tkFont.Font(family="Verdana", size=10)
-        self.root = root
-        
-        self.screen_width, self.screen_height = width, height
+        '''
+        self.root = Tkinter.Tk()
+        self.root.title("[Arduino] Stepper Control")
+        self.root.attributes('-zoomed', True) # FullScreen
+        '''
+        self.root= root
+        self.screen_width, self.screen_height= self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        #self.screen_width, self.screen_height = width, height
         btn_width, btn_height= 15, 1
         self.interval_x, self.interval_y= 6, 6
         #print width,',', height,' ; ',btn_width,',', btn_height
@@ -84,18 +92,23 @@ class App:
         
         #===== Image Frame ======
         self.frame_width, self.frame_height= self.screen_width-self.lbl_MoveCoord.winfo_width()- (self.interval_x*11), self.screen_height-self.FileMenu.winfo_reqheight()-self.interval_y*6
-        frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
-        result = Image.fromarray(frame)
+        self.frame= np.zeros((int(self.frame_height), int(self.frame_width),3),np.uint8)
+        #frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
+        result = Image.fromarray(self.frame)
         result = ImageTk.PhotoImage(result)
         self.panel = Tkinter.Label(self.root , image = result)
-        self.panel.image = frame
+        self.panel.image = result
         self.panel.place(x=self.lbl_MoveCoord.winfo_width()+ self.interval_x*2, y= 0)
         #self.panel.grid(row=0, column=0)
         #self.panel.pack(side = Tkinter.LEFT)
 
-        self.queue = queue
+        #self.queue = queue
+        # ====== Thread ========
+        self.main_run_judge= True
+        self.thread_main= threading.Thread(target= self.main_run)
+        self.thread_main.start() 
         # ====== UI callback setting ======
-        self.panel.after(50, self.check_queue)
+        self.panel.after(50, self.check_frame_update)
         self.lbl_CurrPos.after(5, self.UI_callback)
         #====== Override CLOSE function ==============
         self.root.protocol('WM_DELETE_WINDOW',self.on_exit)
@@ -103,15 +116,28 @@ class App:
         self.mode= 0
         self.saveImg= False
         self.drawing= False
+        self.savePath= 'Data/'
         self.x1, self.y1, self.x2, self.y2= -1,-1,-1,-1        
-        self.line_info=[]
+        #self.line_info=[]
+        self.scanning_judge= False
+        self.scan_X= [1000, 500, 10] #[beg, interval, count]
+        self.scan_Y= [1000, 500, 10] #[beg, interval, count]
+        #self.root.mainloop()
 
     # Override CLOSE function
     def on_exit(self):
         """When you click to exit, this function is called"""
         if tkMessageBox.askyesno("Exit", "Do you want to quit the application?"):
-            print 'Close Arduino Thread...'
+            print 'Close Main Thread...'
+            self.main_run_judge= False
             self.ArdMntr.exit= True
+            self.CamMntr.stop_clean_buffer()
+            del(self.thread_main)
+            print 'Close Arduino Thread...'
+            #self.ArdMntr.exit= True
+            #del(self.ArdMntr)
+            #self.CamMntr.stop_clean_buffer()
+            del(self.CamMntr.thread_clean_buffer)
             self.root.destroy()
 
     def UI_callback(self):
@@ -138,27 +164,28 @@ class App:
 
     def set_frame(self, frame):
         self.frame= frame
-
     
     def btn_saveImg_click(self):
         self.saveImg= True
 
     def btn_MoveTo_click(self):
-        try:
-            Target_X= int(self.entry_Xpos.get())
-            Target_Y= int(self.entry_Ypos.get())
-            if (Target_X>=0) & (Target_X<=8000) & (Target_Y>=0) & (Target_Y<=9500):
-                cmd= 'G00 X{0} Y{1}'.format(Target_X, Target_Y)
-                self.ArdMntr.serial_send(cmd)
-                print 'Command: ', cmd
+        if self.ArdMntr.connect:
+            try:
+                Target_X= int(self.entry_Xpos.get())
+                Target_Y= int(self.entry_Ypos.get())
+                if (Target_X>=0) & (Target_X<=8000) & (Target_Y>=0) & (Target_Y<=9500):
+                    cmd= 'G00 X{0} Y{1}'.format(Target_X, Target_Y)
+                    self.ArdMntr.serial_send(cmd)
+                    print 'Command: ', cmd
                 
-            else:
-                tkMessageBox.showerror("Error", "The range of X should be in [0~8,000]\nThe range of Y should be in [0~9,500]")
+                else:
+                    tkMessageBox.showerror("Error", "The range of X should be in [0~8,000]\nThe range of Y should be in [0~9,500]")
             
-            #print Target_X, ' , ',Target_Y
-        except:
-            tkMessageBox.showerror("Error", "Please enter number!")
-        
+                #print Target_X, ' , ',Target_Y
+            except:
+                tkMessageBox.showerror("Error", "Please enter number!")
+        else:
+            tkMessageBox.showerror("Error", "Arduino connection refused!")
 
     def btn_clear_click(self):
         self.line_info= []
@@ -170,41 +197,48 @@ class App:
         cv2.line(frame , (h , w - 15) , (h , w + 15) , (255 , 0 , 0) , 1)
         return frame
 
-
-    def check_queue(self):
-        '''	
-        try:
-            frame = self.queue.get(block=False)
-        except Queue.Empty:
-            pass
-        else:
-	    angle_beg=0
-        '''
-        angle_end=0
-        #frame = self.mark_cross_line(frame)
-        frame = self.mark_cross_line(self.frame)
-	frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
-	
-        if self.saveImg== True:
-            tmp= cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            cv2.imwrite('Frame1.png',tmp)
-            self.saveImg= False
-        text='Arduino Connection Refused ...'
-        color= (0,0,0)
-        if self.ArdMntr.connect== True:
-            if self.ArdMntr.cmd_state.is_ready():
-                text= 'Idling ...'
-                color = (0 , 255 , 0)
-            else:
-                text= 'Moving ...'
-                color = (255,0,0)
-        cv2.putText(frame, text,(10,40),cv2.FONT_HERSHEY_SIMPLEX, 1,color,2)
-        result = Image.fromarray(frame)
+    def check_frame_update(self):
+        result = Image.fromarray(self.frame)
         result = ImageTk.PhotoImage(result)
         self.panel.configure(image = result)
         self.panel.image = result
-        self.panel.after(1, self.check_queue)
+        self.panel.after(10, self.check_frame_update)
 
+    def main_run(self):
+        while self.main_run_judge:
+            angle_end=0
+            #frame = self.mark_cross_line(frame)
+            frame= self.CamMntr.get_frame()
+            frame= cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = self.mark_cross_line(frame)
+	    frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
+	
+            if self.saveImg== True:
+                # make sure output dir exists
+                if(not path.isdir(self.savePath)):
+                    makedirs(self.savePath)
+                tmp= cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(self.savePath+'Frame1.png',tmp)
+                self.saveImg= False
+            text='Arduino Connection Refused ...'
+            color= (0,0,0)
+            if self.ArdMntr.connect== True:
+                if self.ArdMntr.cmd_state.is_ready():
+                    text= 'Idling ...'
+                    color = (0 , 255 , 0)
+                else:
+                    text= 'Moving ...'
+                    color = (255,0,0)
+            cv2.putText(frame, text,(10,40),cv2.FONT_HERSHEY_SIMPLEX, 1,color,2)
+
+            self.set_frame(frame)
+            time.sleep(0.01)
+            #result = Image.fromarray(frame)
+            #result = ImageTk.PhotoImage(result)
+            #self.panel.configure(image = result)
+            #self.panel.image = result
+            #self.panel.after(1, self.check_queue)
+'''
 def queue_create(queue, running , app , cap):
     while running:
         ret , frame = cap.read()
@@ -216,23 +250,28 @@ def queue_create(queue, running , app , cap):
 def run(cap):
     running = [True]
 
-    root = Tkinter.Tk()
-    root.title("[Arduino] Stepper Control")
-    root.attributes('-zoomed', True) # FullScreen
+    #root = Tkinter.Tk()
+    #root.title("[Arduino] Stepper Control")
+    #root.attributes('-zoomed', True) # FullScreen
 
 
-    queue = Queue.LifoQueue(5)
-    ret , frame = cap.read()
-    print root.winfo_screenwidth() ,', ', root.winfo_screenheight()    
-    app = App(queue , frame, root.winfo_screenwidth() , root.winfo_screenheight(), root)
-    app.panel.bind('<Destroy>', lambda x: (running.pop(), x.widget.destroy()))
+    #queue = Queue.LifoQueue(5)
+    #ret , frame = cap.read()
+    #print root.winfo_screenwidth() ,', ', root.winfo_screenheight()    
+    #app = App()
+    #app.panel.bind('<Destroy>', lambda x: (running.pop(), x.widget.destroy()))
 
-    thread = threading.Thread(target=queue_create, args=(queue, running , app , cap))
-    thread.start()
+    #thread = threading.Thread(target=queue_create, args=(queue, running , app , cap))
+    #thread.start()
 
-    root.mainloop()
+    #root.mainloop()
+'''
 
 
-
-cap = cv2.VideoCapture(0)
-run(cap)
+#cap = cv2.VideoCapture(0)
+#run(cap)
+root = Tkinter.Tk()
+root.title("[Arduino] Stepper Control")
+root.attributes('-zoomed', True) # FullScreen
+app= App(root)
+root.mainloop()
