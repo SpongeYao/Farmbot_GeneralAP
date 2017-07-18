@@ -12,7 +12,9 @@ The Python code with a user interface is porvided with following functions:
 
 > The parameters on UI are saved automatically after the program is closed. 
 
-```command line: 
+
+### Command line:
+``` 
 python gui_main.py
 ```
 
