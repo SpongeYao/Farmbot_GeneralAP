@@ -10,7 +10,6 @@ The Python code with a user interface is porvided with following functions:
 
 > The communication between Arduino and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Arduino' button in menubar
 
-
 > The parameters on UI are saved automatically after the program is closed. 
 
 ```command line: 
