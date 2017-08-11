@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import threading
 import json
-import Queue
 import random
 import math
 import time
@@ -16,6 +15,8 @@ from os import listdir, path, makedirs, remove
 from class_ArduinoSerMntr import*
 from class_CameraMntr import*
 import class_ImageProcessing
+from class_ConfigSetting import ConfigSetting
+from dialog_MotorSetting import MotorSetting
 
 class App:
     # Ininitalization
@@ -24,6 +25,7 @@ class App:
         self.ArdMntr.start()
         
         self.CamMntr= CameraLink()
+        self.CamMntr.connect_camera()
 
         myfont14 = tkFont.Font(family="Verdana", size=14)
         myfont12 = tkFont.Font(family="Verdana", size=12)
@@ -37,28 +39,44 @@ class App:
         # ====== Parameters ================================
         self.savePath= 'Data/'
         self.saveParaPath= 'Data/Para/'
-        self.configName= 'conifg.json'
-        params= self.get_params(self.saveParaPath, self.configName)
-        self.threshold_graylevel= params["plastic_thrshd_gray"]
-        self.threshold_size= params["plastic_thrshd_size"] 
-        self.scan_X= params["Scan_X (Beg,Interval,Amount)"]
-        self.scan_Y= params["Scan_Y (Beg,Interval,Amount)"]
-        self.limit= params["limit Maximum (X,Y)"]
-        
+        self.configName= 'config.json'
+
+	self.ItemList=[]
+        defaultValueList=[]
+	self.ItemList.append("thrshd_gray")
+	defaultValueList.append(128)
+	self.ItemList.append("thrshd_size")
+	defaultValueList.append(20)
+	self.ItemList.append("Scan_X (Beg,Interval,Amount)")
+	defaultValueList.append([0,500,4])
+	self.ItemList.append("Scan_Y (Beg,Interval,Amount)")
+	defaultValueList.append([0,500,4])
+	self.ItemList.append("limit Maximum (X,Y)")
+	defaultValueList.append([8000,95000])
+        self.ItemList.append("Max Speed (X, Y)")
+	defaultValueList.append([400,400])
+        self.ItemList.append("Ac/Deceleration (X, Y)")
+	defaultValueList.append([100,100])
+
+        self.config= ConfigSetting(self.saveParaPath, self.configName, defaultValueList)
+        params= self.config.read_json(self.ItemList)
+        #print 'para: ',params
+        self.threshold_graylevel= params[self.ItemList[0]]
+        self.threshold_size= params[self.ItemList[1]] 
+        self.scan_X= params[self.ItemList[2]]
+        self.scan_Y= params[self.ItemList[3]]
+        self.limit= params[self.ItemList[4]]
+        self.MaxSpeed= params[self.ItemList[5]]
+        self.Acceleration= params[self.ItemList[6]]
+
         self.imageProcessor= class_ImageProcessing.contour_detect(self.savePath,self.saveParaPath)
         #self.mode= 0
         self.drawing= False
         self.x1, self.y1, self.x2, self.y2= -1,-1,-1,-1        
         self.StartScan_judge= False
-        #self.cap_scanning= False
         self.saveScanning= 'XXX'
-        '''
-        self.scan_X= [0, 500, 4] #[beg, interval, amount]
-        self.scan_Y= [0, 500, 3] #[beg, interval, amount]
-        self.limit= [8000, 9500] #[X,Y]
-        self.threshold_graylevel= 128
-        self.threshold_size= 20
-        '''
+        self.strStatus= 'Idling...'
+
         self.screen_width, self.screen_height= self.root.winfo_screenwidth(), self.root.winfo_screenheight()
         #self.screen_width, self.screen_height = width, height
         btn_width, btn_height= 15, 1
@@ -70,15 +88,25 @@ class App:
         self.FileMenu = Tkinter.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="File",underline=0, menu=self.FileMenu)
         self.FileMenu.add_command(label="Save Image", command=self.btn_saveImg_click)
+        self.SettingMenu = Tkinter.Menu(self.menubar, tearoff=0)
+        self.SettingMenu.add_command(label= "Motor Setting", command= self.set_Motor)
+        self.menubar.add_cascade(label="Setting", underline=0, menu=self.SettingMenu)
         self.ConnectMenu = Tkinter.Menu(self.menubar, tearoff=0)
         self.ConnectMenu.add_command(label="Connect to Arduino", command=self.set_ArdConnect)
+        self.ConnectMenu.add_command(label="Connect to Camera", command=self.set_CamConeect)
         self.menubar.add_cascade(label="Communcation", underline= 0, menu=self.ConnectMenu)
         self.ImgProcess= Tkinter.Menu(self.menubar, tearoff=0)
         self.ImgProcess.add_command(label="Set Background", command= self.plastic_set_background)
-        self.ImgProcess.add_command(label='Detect Scratch', command= self.plastic_detect_scratch)
+        self.ImgProcess.add_command(label='Otsu Binary', command= self.methond_OtsuBinary)
         self.menubar.add_cascade(label="Image Processing", underline=0, menu= self.ImgProcess)
         self.root.config(menu= self.menubar)
         self.root.update()
+        # ====== [Config] Status Bar ==============
+        self.statuslabel = Tkinter.Label(self.root, bd = 1, relief = Tkinter.SUNKEN, anchor = "w")
+        self.statuslabel.config(text="IDLING ..................")
+        self.statuslabel.pack(side = Tkinter.BOTTOM,fill=Tkinter.X)
+        self.root.update()
+        self.screen_height= self.screen_height- self.statuslabel.winfo_reqheight()
         # ====== [Config] Current position of motor ===========
         self.lbl_CurrCoord= Tkinter.Label(self.root, text="[ Current Position ]",     font= myfont14)
         self.lbl_CurrCoord.place(x= self.interval_x, y= self.interval_y)
@@ -171,17 +199,17 @@ class App:
         self.btn_StartScan.place(x= self.entry_ScanAmount_X.winfo_x(), y=self.entry_ScanAmount_X.winfo_y()+ self.entry_ScanAmount_X.winfo_height()+ self.interval_y)
         self.root.update()
         # ===== Plastic Detection =======
-        self.lbl_scracth_detect= Tkinter.Label(self.root, text="[ Detection Setting ]", font= myfont14)
+        self.lbl_scracth_detect= Tkinter.Label(self.root, text="[ Threshold Setting ]", font= myfont14)
         self.lbl_scracth_detect.place(x= self.interval_x, y= self.btn_StartScan.winfo_y()+ self.btn_StartScan.winfo_height()+self.interval_y)
         self.root.update()
         
-        self.scale_threshold_graylevel = Tkinter.Scale(self.root , from_= 0 , to = 255 , orient = Tkinter.HORIZONTAL , label = "(Unused) threshold of gray_level", font = myfont12, width = 10, length = 200 )
+        self.scale_threshold_graylevel = Tkinter.Scale(self.root , from_= 0 , to = 255 , orient = Tkinter.HORIZONTAL , label = "(Unused) gray_level", font = myfont12, width = 10, length = 200 )
         self.scale_threshold_graylevel.set(self.threshold_graylevel)
         self.scale_threshold_graylevel.place(x= self.lbl_scracth_detect.winfo_x(), y= self.lbl_scracth_detect.winfo_y()+ self.lbl_scracth_detect.winfo_height())
         self.scale_threshold_graylevel.config(state= 'disabled')
         self.root.update()
 
-        self.scale_threshold_size = Tkinter.Scale(self.root , from_ = 0 , to = 500 , orient = Tkinter.HORIZONTAL , label = "threshold of defect_size", font = myfont12, width = 10, length = 200 )
+        self.scale_threshold_size = Tkinter.Scale(self.root , from_ = 0 , to = 500 , orient = Tkinter.HORIZONTAL , label = "contour_size", font = myfont12, width = 10, length = 200 )
         self.scale_threshold_size.set(self.threshold_size)
 
         self.scale_threshold_size.place(x= self.scale_threshold_graylevel.winfo_x(), y= self.scale_threshold_graylevel.winfo_y()+ self.scale_threshold_graylevel.winfo_height())
@@ -191,7 +219,7 @@ class App:
         self.btn_saveImg.place(x= self.lbl_MoveCoord.winfo_x(), y= self.screen_height-self.FileMenu.winfo_reqheight()-self.btn_MoveTo.winfo_reqheight()-self.interval_y*6)
         self.root.update()
         
-        self.btn_detect= Tkinter.Button(self.root, text='Otsu Binary', command= self.plastic_detect_scratch,font= myfont14, width= btn_width, height= btn_height)
+        self.btn_detect= Tkinter.Button(self.root, text='Otsu Binary', command= self.methond_OtsuBinary,font= myfont14, width= btn_width, height= btn_height)
         self.btn_detect.place(x= self.lbl_MoveCoord.winfo_x(), y= self.btn_saveImg.winfo_y()- self.btn_saveImg.winfo_height()- self.interval_y)
         self.root.update()
         
@@ -232,6 +260,7 @@ class App:
         # ====== UI callback setting ======
         self.panel.after(50, self.check_frame_update)
         self.lbl_CurrPos.after(5, self.UI_callback)
+        self.statuslabel.after(5, self.check_status)
         # ====== Override CLOSE function ==============
         self.root.protocol('WM_DELETE_WINDOW',self.on_exit)
         # ====== Thread ========
@@ -241,32 +270,24 @@ class App:
         self.scanning_judge= True
         self.thread_scanning= threading.Thread(target= self.scanning_run)
         self.thread_scanning.start()
-
-    def get_params(self , arg_filepath, arg_filename):
-        if path.isfile(arg_filepath+arg_filename):
-            with open(arg_filepath+arg_filename , 'r') as file_pointer:
-                data = json.load(file_pointer)
-        else:
-            data= dict()
-            data["plastic_thrshd_gray"] = 128
-            data["plastic_thrshd_size"] = 20
-            data["Scan_X (Beg,Interval,Amount)"]= [0, 500, 4]
-            data["Scan_Y (Beg,Interval,Amount)"]= [0, 500, 4]
-            data["limit Maximum (X,Y)"]= [8000, 95000]
-        return data
+        time.sleep(0.5)
+        if self.ArdMntr.connect: 
+            self.ArdMntr.set_MaxSpeed(self.MaxSpeed[0],'x')
+            self.ArdMntr.set_MaxSpeed(self.MaxSpeed[1],'y')
+            self.ArdMntr.set_Acceleration(self.Acceleration[0],'x')
+            self.ArdMntr.set_Acceleration(self.Acceleration[1],'y')
 
     def store_para(self, arg_filepath, arg_filename):
-        # make sure output dir exists
-        if(not path.isdir(self.saveParaPath)):
-            makedirs(arg_savePath)
-        data = dict()
-        data["plastic_thrshd_gray"] = self.scale_threshold_graylevel.get()
-        data["plastic_thrshd_size"] = self.scale_threshold_size.get()
-        data["Scan_X (Beg,Interval,Amount)"]= [int(self.entry_1stXpos.get()), int(self.entry_ScanInterval_X.get()), int(self.entry_ScanAmount_X.get())]
-        data["Scan_Y (Beg,Interval,Amount)"]= [int(self.entry_1stYpos.get()), int(self.entry_ScanInterval_Y.get()), int(self.entry_ScanAmount_Y.get())]
-        data["limit Maximum (X,Y)"]= self.limit
-        with open(arg_filepath+arg_filename , 'w') as out:
-            json.dump(data , out)
+        tmp=[]
+        tmp.append(self.scale_threshold_graylevel.get())
+        tmp.append(self.scale_threshold_size.get())
+        tmp.append([int(self.entry_1stXpos.get()), int(self.entry_ScanInterval_X.get()), int(self.entry_ScanAmount_X.get())])
+        tmp.append( [int(self.entry_1stYpos.get()), int(self.entry_ScanInterval_Y.get()), int(self.entry_ScanAmount_Y.get())])
+        tmp.append(self.limit)
+        tmp.append(self.MaxSpeed)
+        tmp.append(self.Acceleration)
+
+        self.config.write_json(self.ItemList, tmp)
         print "Para set"
 
     # Override CLOSE function
@@ -295,6 +316,10 @@ class App:
         self.lbl_CurrPos.config(text= tmp_text)
         self.lbl_CurrPos.after(10,self.UI_callback)
     
+    def check_status(self):
+        self.statuslabel.config(text= self.strStatus)
+        self.statuslabel.after(10,self.check_status)
+
     def Lock_UI(self, arg_Lock):
         if arg_Lock:
             self.btn_MoveTo.config(state= 'disabled')
@@ -325,16 +350,31 @@ class App:
         frame= self.CamMntr.get_frame()
         self.imageProcessor.set_background(frame)
 
-    def plastic_detect_scratch(self):
-        print 'Start Detect'
+    def methond_OtsuBinary(self):
+        print 'Start Otsu Binary.... '
         #result= self.CamMntr.subract_test()
         self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
         self.imageProcessor.set_threshold_graylevel(int(self.scale_threshold_graylevel.get()))
-        result= self.imageProcessor.get_contour(self.singleframe, True, self.savePath, 'Plastic_ScracthDetect.png')
+        result= self.imageProcessor.get_contour(self.singleframe, True, self.savePath, 'Otus_Binary.png')
         self.display_panel_singleframe(result)
 
     def set_ArdConnect(self):
         self.ArdMntr.connect_serial()
+
+    def set_CamConeect(self):
+        self.CamMntr.connect_camera()
+
+    def set_Motor(self):
+        Var= MotorSetting(self.root, self.MaxSpeed, self.Acceleration)
+        if Var.result is not None:
+            print 'result: ',Var.result
+            self.MaxSpeed= [Var.result[0], Var.result[2]]
+            self.Acceleration= [Var.result[1], Var.result[3]]
+            self.ArdMntr.set_MaxSpeed(self.MaxSpeed[0],'x')
+            self.ArdMntr.set_MaxSpeed(self.MaxSpeed[1],'y')
+            self.ArdMntr.set_Acceleration(self.Acceleration[0],'x')
+            self.ArdMntr.set_Acceleration(self.Acceleration[1],'y')
+        #self.ArdMntr.set_MaxSpeed()
 
     def set_frame(self, frame):
         self.frame= frame
@@ -471,7 +511,6 @@ class App:
                         while 1:
                             if (self.ArdMntr.cmd_state.is_ready()):
                                 time.sleep(1)
-                                #self.cap_scanning= True
                                 self.saveScanning= '{0}_'.format(step)+self.ArdMntr.cmd_state.strCurX+'_'+self.ArdMntr.cmd_state.strCurY
                                 frame= self.CamMntr.get_frame()
                                 self.saveImg_function(frame, self.savePath+'Scanning/','Raw_'+self.saveScanning)
@@ -528,7 +567,7 @@ class App:
                         text= 'Scanning...'+'(X, Y)= ('+self.ArdMntr.cmd_state.strCurX+', '+self.ArdMntr.cmd_state.strCurY+')'
                         color = (255,0,0)
             cv2.putText(frame, text,(10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.7,color,1)
-
+            self.strStatus= text
             self.set_frame(frame)
             time.sleep(0.01)
 

@@ -134,7 +134,28 @@ class MonitorThread(threading.Thread):
         sys.stdout.write("[%s]\n" % send_str)
         self.ser.write(send_str + " \r\n")
         self.cmd_state.set_by_send(send_str)
+
+    def move_Coord(self, arg_Xpos, arg_Ypos):
+        cmd= 'G00 X{0} Y{1}'.format(arg_Xpos, arg_Ypos)
+        self.serial_send(cmd)
+        time.sleep(1)
     
+    def set_MaxSpeed(self, arg_spd, arg_index):
+        if arg_index.lower() == 'x':
+            cmd= 'F22 P71 V{0}'.format(arg_spd)
+        else:
+            cmd= 'F22 P72 V{0}'.format(arg_spd)
+        self.serial_send(cmd)
+        time.sleep(0.02)
+    
+    def set_Acceleration(self, arg_acc, arg_index):
+        if arg_index.lower() == 'x':
+            cmd= 'F22 P41 V{0}'.format(arg_acc)
+        else:
+            cmd= 'F22 P42 V{0}'.format(arg_acc)
+        self.serial_send(cmd)
+        time.sleep(0.02)
+
 '''
 def main():
     
