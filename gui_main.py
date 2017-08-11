@@ -509,10 +509,12 @@ class App:
         while self.scanning_judge:
             if self.StartScan_judge:
                 print 'Scanning...'
+                '''
                 if not(self.imageProcessor.check_background()):
                     tkMessageBox.showerror("Error", 'Background has not been built yet!')
                     self.StartScan_judge= False
                     break
+                '''
                 for step_X in range(0, self.scan_X[2]):
                     for step_Y in range(0, self.scan_Y[2]):
                         if self.StartScan_judge== False:
