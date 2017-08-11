@@ -25,8 +25,8 @@ class contour_detect():
 
     def store_all_para(self):
         data= dict()
-        data["plastic_thrshd_gray"] = self.threshold_graylevel
-        data["plastic_thrshd_size"] = self.threshold_size
+        data["thrshd_gray"] = self.threshold_graylevel
+        data["thrshd_size"] = self.threshold_size
         with open(self.saveParaPath+"Para.json" , 'w') as out:
             json.dump(data , out)
             print "Para set"
@@ -50,11 +50,9 @@ class contour_detect():
         tmp = cv2.cvtColor(arg_frame, cv2.COLOR_RGB2GRAY)
         blur = cv2.GaussianBlur(tmp,(5,5),0)
         ret,thresholdedImg = cv2.threshold(blur,0 ,255 ,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        print "threshold=", self.threshold_graylevel
 
         result = cv2.cvtColor(thresholdedImg, cv2.COLOR_GRAY2RGB)
         ctrs, hier = cv2.findContours(thresholdedImg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        print "ctrs #:" , len(ctrs)
 
         ctrs = filter(lambda x : cv2.contourArea(x) > self.threshold_size , ctrs)
 
@@ -64,5 +62,5 @@ class contour_detect():
             cv2.drawContours(result, [cntr], 0, (0, 128, 255), 3)
         if arg_export_index:
             cv2.imwrite(arg_export_path+ arg_export_filename+'.jpg', result)
-        print "Plastic compare success"
+        print "Get Contour success"
         return result
