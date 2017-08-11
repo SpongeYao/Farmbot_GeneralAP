@@ -1,15 +1,17 @@
 StepperControl
 ==========================
 The Python code with a user interface is porvided with following functions:
-1. 2-axis stepper-motor control
+1. 3-axis stepper-motor control
 2. auto scanning function by setting start point, scanning interval and scanning amount
 3. real-time image display 
 4. image processing function(otsu method is provided here)
+5. basic setting function(Max Speed & Acceleration)
 
 ![GUI of gui_main.py](./gui_1.png)
 
-> The communication between Arduino and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Arduino' button in menubar
-> The parameters on UI are saved automatically after the program is closed. 
+> * The communication between Arduino and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Arduino' button in menubar  
+> * The communication between Camera and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Camera' button in menubar  
+> * The parameters on UI are saved automatically after the program is closed.   
 
 ```command line: 
 python gui_main.py
@@ -40,9 +42,9 @@ ID   | Name
 
 Codes sent to the arduino
 ------------------------
-Moving 100 steps and 200 steps on X & Y direction respectively
+Moving 100, 200, 300 steps on X & Y & Z direction respectively
 ```
-G00 X100 Y200
+G00 X100 Y200 Z300
 ```
 Read the Parameter Value of X acceleration
 ```

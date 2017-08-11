@@ -26,10 +26,10 @@ class App:
         
         self.CamMntr= CameraLink()
         self.CamMntr.connect_camera()
-
-        myfont14 = tkFont.Font(family="Verdana", size=14)
-        myfont12 = tkFont.Font(family="Verdana", size=12)
-        myfont10 = tkFont.Font(family="Verdana", size=10)
+        strFont= 'Arial'
+        myfont14 = tkFont.Font(family=strFont, size=14, weight= tkFont.BOLD)
+        myfont12 = tkFont.Font(family=strFont, size=12)#, weight= tkFont.BOLD)
+        myfont10 = tkFont.Font(family=strFont, size=10)
         '''
         self.root = Tkinter.Tk()
         self.root.title("[Arduino] Stepper Control")
@@ -54,9 +54,9 @@ class App:
 	self.ItemList.append("limit Maximum (X,Y)")
 	defaultValueList.append([8000,95000])
         self.ItemList.append("Max Speed (X, Y)")
-	defaultValueList.append([400,400])
+	defaultValueList.append([400,400,400])
         self.ItemList.append("Ac/Deceleration (X, Y)")
-	defaultValueList.append([100,100])
+	defaultValueList.append([100,100,100])
 
         self.config= ConfigSetting(self.saveParaPath, self.configName, defaultValueList)
         params= self.config.read_json(self.ItemList)
@@ -70,16 +70,17 @@ class App:
         self.Acceleration= params[self.ItemList[6]]
 
         self.imageProcessor= class_ImageProcessing.contour_detect(self.savePath,self.saveParaPath)
-        #self.mode= 0
         self.drawing= False
         self.x1, self.y1, self.x2, self.y2= -1,-1,-1,-1        
         self.StartScan_judge= False
         self.saveScanning= 'XXX'
         self.strStatus= 'Idling...'
 
-        self.screen_width, self.screen_height= self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        #self.screen_width, self.screen_height = width, height
-        btn_width, btn_height= 15, 1
+        self.root.update()
+        self.screen_width, self.screen_height= self.root.winfo_width(), self.root.winfo_height()
+        print 'screen: ',[self.root.winfo_screenwidth(), self.root.winfo_screenheight()]
+        print 'w, h: ',[self.root.winfo_width(), self.root.winfo_height()]
+        btn_width, btn_height= 18, 1
         self.interval_x, self.interval_y= 6, 6
         #print width,',', height,' ; ',btn_width,',', btn_height
         
@@ -106,12 +107,12 @@ class App:
         self.statuslabel.config(text="IDLING ..................")
         self.statuslabel.pack(side = Tkinter.BOTTOM,fill=Tkinter.X)
         self.root.update()
-        self.screen_height= self.screen_height- self.statuslabel.winfo_reqheight()
+        #self.screen_height= self.screen_height- self.statuslabel.winfo_reqheight()
         # ====== [Config] Current position of motor ===========
         self.lbl_CurrCoord= Tkinter.Label(self.root, text="[ Current Position ]",     font= myfont14)
         self.lbl_CurrCoord.place(x= self.interval_x, y= self.interval_y)
         self.root.update()
-        self.lbl_CurrPos= Tkinter.Label(self.root, text="(X, Y)= (-1, -1)",font= myfont12)
+        self.lbl_CurrPos= Tkinter.Label(self.root, text="(X, Y, Z)= (-1, -1, -1)",font= myfont12)
         self.lbl_CurrPos.place(x= self.interval_x, y= self.lbl_CurrCoord.winfo_y()+ self.lbl_CurrCoord.winfo_height())
         self.root.update()
         #======[Step Motor Control] ========
@@ -133,9 +134,19 @@ class App:
         self.entry_Ypos.insert(Tkinter.END, "0")
         self.entry_Ypos.place(x= self.lbl_Ypos.winfo_x()+ self.lbl_Ypos.winfo_width(), y= self.lbl_Ypos.winfo_y())
         self.root.update()
-        self.lbl_posUnit= Tkinter.Label(self.root, text='(step)')
-        self.lbl_posUnit.place(x= self.entry_Ypos.winfo_x()+ self.entry_Ypos.winfo_width(), y= self.entry_Ypos.winfo_y()+self.interval_y)
+        
+       
+        self.lbl_Zpos= Tkinter.Label(self.root, text= 'Z :',font= myfont12)
+        self.lbl_Zpos.place(x= self.entry_Ypos.winfo_x()+ self.entry_Ypos.winfo_width()+ self.interval_x, y = self.lbl_Xpos.winfo_y())
+        self.root.update()
+        self.entry_Zpos= Tkinter.Entry(self.root, font= myfont12, width=4)
+        self.entry_Zpos.insert(Tkinter.END, "0")
+        self.entry_Zpos.place(x= self.lbl_Zpos.winfo_x()+ self.lbl_Zpos.winfo_width(), y= self.lbl_Zpos.winfo_y())
+        self.root.update()
 
+        self.lbl_posUnit= Tkinter.Label(self.root, text='(step)')
+        self.lbl_posUnit.place(x= self.entry_Zpos.winfo_x()+ self.entry_Zpos.winfo_width(), y= self.entry_Zpos.winfo_y()+self.interval_y)
+        self.root.update()
         self.btn_MoveTo= Tkinter.Button(self.root, text= 'Move to', command= self.btn_MoveTo_click,font= myfont14)
         self.btn_MoveTo.place(x= self.lbl_Xpos.winfo_x(), y=self.lbl_Ypos.winfo_y()+ self.lbl_Ypos.winfo_height()+ self.interval_y)
         self.root.update()
@@ -149,16 +160,16 @@ class App:
         self.lbl_Scan1stPt= Tkinter.Label(self.root, text= 'Start point (X, Y):',font= myfont12)
         self.lbl_Scan1stPt.place(x= self.interval_x, y = self.lbl_Scan.winfo_y()+ self.lbl_Scan.winfo_height()+self.interval_y)
         self.root.update()
-        self.entry_1stXpos= Tkinter.Entry(self.root, font= myfont12, width=4)
+        self.entry_1stXpos= Tkinter.Entry(self.root, font= myfont12, width= 6)
         self.entry_1stXpos.insert(Tkinter.END, '{0}'.format(self.scan_X[0]))
         self.entry_1stXpos.place(x= self.lbl_Scan1stPt.winfo_x(), y= self.lbl_Scan1stPt.winfo_y()+ self.lbl_Scan1stPt.winfo_height())
         self.root.update()
 
         self.lbl_Scan1stPt_comma= Tkinter.Label(self.root, text= ', ', font= myfont12)
-        self.lbl_Scan1stPt_comma.place(x=self.entry_1stXpos.winfo_x()+self.entry_Xpos.winfo_width(), y= self.entry_1stXpos.winfo_y())
+        self.lbl_Scan1stPt_comma.place(x=self.entry_1stXpos.winfo_x()+self.entry_1stXpos.winfo_width(), y= self.entry_1stXpos.winfo_y())
         self.root.update()
 
-        self.entry_1stYpos= Tkinter.Entry(self.root, font= myfont12, width=4)
+        self.entry_1stYpos= Tkinter.Entry(self.root, font= myfont12, width=6)
         self.entry_1stYpos.insert(Tkinter.END, '{0}'.format(self.scan_Y[0]))
         self.entry_1stYpos.place(x= self.lbl_Scan1stPt_comma.winfo_x()+self.lbl_Scan1stPt_comma.winfo_width(), y= self.lbl_Scan1stPt_comma.winfo_y())
         self.root.update()
@@ -166,14 +177,14 @@ class App:
         self.lbl_ScanInterval= Tkinter.Label(self.root, text='Interval (X, Y) :', font= myfont12)
         self.lbl_ScanInterval.place(x= self.entry_1stXpos.winfo_x(), y= self.entry_1stXpos.winfo_y()+ self.entry_1stXpos.winfo_height()+self.interval_y)
         self.root.update()
-        self.entry_ScanInterval_X= Tkinter.Entry(self.root, font=myfont12, width=4)
+        self.entry_ScanInterval_X= Tkinter.Entry(self.root, font=myfont12, width=6)
         self.entry_ScanInterval_X.insert(Tkinter.END, '{0}'.format(self.scan_X[1]))
         self.entry_ScanInterval_X.place(x= self.lbl_ScanInterval.winfo_x(), y= self.lbl_ScanInterval.winfo_y()+self.lbl_ScanInterval.winfo_height())
         self.root.update()
         self.lbl_ScanInterval_comma= Tkinter.Label(self.root, text= ', ', font= myfont12)
         self.lbl_ScanInterval_comma.place(x=self.entry_ScanInterval_X.winfo_x()+self.entry_ScanInterval_X.winfo_width(), y= self.entry_ScanInterval_X.winfo_y())
         self.root.update()
-        self.entry_ScanInterval_Y= Tkinter.Entry(self.root, font= myfont12, width=4)
+        self.entry_ScanInterval_Y= Tkinter.Entry(self.root, font= myfont12, width=6)
         self.entry_ScanInterval_Y.insert(Tkinter.END, '{0}'.format(self.scan_Y[1]))
         self.entry_ScanInterval_Y.place(x= self.lbl_ScanInterval_comma.winfo_x()+self.lbl_ScanInterval_comma.winfo_width(), y= self.lbl_ScanInterval_comma.winfo_y())
         self.root.update()
@@ -182,14 +193,14 @@ class App:
         self.lbl_ScanAmount= Tkinter.Label(self.root, text='Scanning Step (X, Y) :', font= myfont12)
         self.lbl_ScanAmount.place(x= self.entry_ScanInterval_X.winfo_x(), y= self.entry_ScanInterval_X.winfo_y()+ self.entry_ScanInterval_X.winfo_height()+self.interval_y)
         self.root.update()
-        self.entry_ScanAmount_X= Tkinter.Entry(self.root, font=myfont12, width=4)
+        self.entry_ScanAmount_X= Tkinter.Entry(self.root, font=myfont12, width=6)
         self.entry_ScanAmount_X.insert(Tkinter.END, '{0}'.format(self.scan_X[2]))
         self.entry_ScanAmount_X.place(x= self.lbl_ScanAmount.winfo_x(), y= self.lbl_ScanAmount.winfo_y()+self.lbl_ScanAmount.winfo_height())
         self.root.update()
         self.lbl_ScanAmount_comma= Tkinter.Label(self.root, text= ', ', font= myfont12)
         self.lbl_ScanAmount_comma.place(x=self.entry_ScanAmount_X.winfo_x()+self.entry_ScanAmount_X.winfo_width(),y= self.entry_ScanAmount_X.winfo_y())
         self.root.update()
-        self.entry_ScanAmount_Y= Tkinter.Entry(self.root, font= myfont12, width=4)
+        self.entry_ScanAmount_Y= Tkinter.Entry(self.root, font= myfont12, width=6)
         self.entry_ScanAmount_Y.insert(Tkinter.END, '{0}'.format(self.scan_Y[2]))
         self.entry_ScanAmount_Y.place(x= self.lbl_ScanAmount_comma.winfo_x()+self.lbl_ScanAmount_comma.winfo_width(), \
                                       y= self.lbl_ScanAmount_comma.winfo_y())
@@ -198,7 +209,7 @@ class App:
         self.btn_StartScan= Tkinter.Button(self.root, text= 'Start Scan', command= self.btn_StartScan_click,font= myfont14, fg= 'green', width= btn_width, height= btn_height)
         self.btn_StartScan.place(x= self.entry_ScanAmount_X.winfo_x(), y=self.entry_ScanAmount_X.winfo_y()+ self.entry_ScanAmount_X.winfo_height()+ self.interval_y)
         self.root.update()
-        # ===== Plastic Detection =======
+        # ===== Image Processing =======
         self.lbl_scracth_detect= Tkinter.Label(self.root, text="[ Threshold Setting ]", font= myfont14)
         self.lbl_scracth_detect.place(x= self.interval_x, y= self.btn_StartScan.winfo_y()+ self.btn_StartScan.winfo_height()+self.interval_y)
         self.root.update()
@@ -216,7 +227,7 @@ class App:
         self.root.update()
 
         self.btn_saveImg= Tkinter.Button(self.root, text='Save Image', command= self.btn_saveImg_click,font= myfont14, width= btn_width, height= btn_height)
-        self.btn_saveImg.place(x= self.lbl_MoveCoord.winfo_x(), y= self.screen_height-self.FileMenu.winfo_reqheight()-self.btn_MoveTo.winfo_reqheight()-self.interval_y*6)
+        self.btn_saveImg.place(x= self.lbl_MoveCoord.winfo_x(), y= self.screen_height-self.btn_MoveTo.winfo_reqheight()-self.statuslabel.winfo_reqheight()- self.FileMenu.winfo_reqheight()-self.interval_y*2)
         self.root.update()
         
         self.btn_detect= Tkinter.Button(self.root, text='Otsu Binary', command= self.methond_OtsuBinary,font= myfont14, width= btn_width, height= btn_height)
@@ -224,16 +235,16 @@ class App:
         self.root.update()
         
         # ===== Main Image Frame ======
-        self.frame_width, self.frame_height= int(0.5*(self.screen_width-self.lbl_MoveCoord.winfo_width()- (self.interval_x*11))), int(0.5*(self.screen_height-self.FileMenu.winfo_reqheight()-self.interval_y*6))
+        Left_width= self.lbl_MoveCoord.winfo_reqwidth()+ self.interval_x*11
+        self.frame_width, self.frame_height= int(0.5*(self.screen_width-Left_width- self.interval_x*2)), int(0.5*(self.screen_height-self.FileMenu.winfo_reqheight()- self.statuslabel.winfo_reqheight() -self.interval_y*2))
         
-        #self.frame_width, self.frame_height= self.screen_width-self.lbl_MoveCoord.winfo_width()- (self.interval_x*11), self.screen_height-self.FileMenu.winfo_reqheight()-self.interval_y*6
         self.frame= np.zeros((int(self.frame_height), int(self.frame_width),3),np.uint8)
         #frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
         result = Image.fromarray(self.frame)
         result = ImageTk.PhotoImage(result)
         self.panel = Tkinter.Label(self.root , image = result)
         self.panel.image = result
-        self.panel.place(x=self.lbl_MoveCoord.winfo_width()+ self.interval_x*2, y= 0)
+        self.panel.place(x=Left_width, y= 0)
         self.root.update()
         # ====== Display merge Image Frame =====
         self.mergeframe_width, self.mergeframe_height= self.frame_width, self.frame_height*2+2
@@ -244,7 +255,7 @@ class App:
         result = ImageTk.PhotoImage(result)
         self.panel_mergeframe = Tkinter.Label(self.root , image = result)
         self.panel_mergeframe.image = result
-        self.panel_mergeframe.place(x=self.panel.winfo_x()+ self.panel.winfo_width(), y= 0)
+        self.panel_mergeframe.place(x=self.panel.winfo_x()+ self.panel.winfo_reqwidth(), y= 0)
         self.root.update()
         # ====== One Shot Image Frame ======
         self.singleframe_width, self.singleframe_height= self.frame_width, self.frame_height
@@ -270,12 +281,14 @@ class App:
         self.scanning_judge= True
         self.thread_scanning= threading.Thread(target= self.scanning_run)
         self.thread_scanning.start()
-        time.sleep(0.5)
+        time.sleep(0.7)
         if self.ArdMntr.connect: 
             self.ArdMntr.set_MaxSpeed(self.MaxSpeed[0],'x')
             self.ArdMntr.set_MaxSpeed(self.MaxSpeed[1],'y')
+            self.ArdMntr.set_MaxSpeed(self.MaxSpeed[2],'z')
             self.ArdMntr.set_Acceleration(self.Acceleration[0],'x')
             self.ArdMntr.set_Acceleration(self.Acceleration[1],'y')
+            self.ArdMntr.set_Acceleration(self.Acceleration[2],'z')
 
     def store_para(self, arg_filepath, arg_filename):
         tmp=[]
@@ -309,7 +322,7 @@ class App:
 
     def UI_callback(self):
         if self.ArdMntr.connect== True:
-            tmp_text= '(X, Y)= ('+self.ArdMntr.cmd_state.strCurX+', '+self.ArdMntr.cmd_state.strCurY+')'
+            tmp_text= '(X, Y, Z)= ('+self.ArdMntr.cmd_state.strCurX+', '+self.ArdMntr.cmd_state.strCurY+', '+self.ArdMntr.cmd_state.strCurZ+')'
         else:
             tmp_text='Arduino Connection Refuesed!'
 
@@ -325,6 +338,7 @@ class App:
             self.btn_MoveTo.config(state= 'disabled')
             self.entry_Xpos.config(state= 'disabled')
             self.entry_Ypos.config(state= 'disabled')
+            self.entry_Zpos.config(state= 'disabled')
             self.btn_detect.config(state= 'disabled')
             self.btn_saveImg.config(state= 'disabled')
             self.entry_1stXpos.config(state= 'disabled')
@@ -337,6 +351,7 @@ class App:
             self.btn_MoveTo.config(state= 'normal')
             self.entry_Xpos.config(state= 'normal')
             self.entry_Ypos.config(state= 'normal')
+            self.entry_Zpos.config(state= 'normal')
             self.btn_detect.config(state= 'normal')
             self.btn_saveImg.config(state= 'normal')
             self.entry_1stXpos.config(state= 'normal')
@@ -414,6 +429,7 @@ class App:
     def btn_StartScan_click(self):
         self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
         self.imageProcessor.set_threshold_graylevel(int(self.scale_threshold_graylevel.get()))
+        self.input_Zpos= int(self.entry_Zpos.get())
         print 'Start'
         if self.StartScan_judge:
             self.StartScan_judge= False
@@ -429,8 +445,9 @@ class App:
                     self.reset_mergeframe()
                     #print '### ', self.scan_X, self.scan_Y
                 
-                    cmd= 'G00 X{0} Y{1}'.format(self.scan_X[0], self.scan_Y[0])
-                    self.ArdMntr.serial_send(cmd)
+                    #cmd= 'G00 X{0} Y{1}'.format(self.scan_X[0], self.scan_Y[0])
+                    #self.ArdMntr.serial_send(cmd)
+                    self.ArdMntr.move_Coord(self.scan_X[0], self.scan_Y[0], self.input_Zpos)
                     if self.scan_X[0]+self.scan_X[1]*self.scan_X[2]<self.limit[0] | self.scan_Y[0]+self.scan_Y[1]*self.scan_Y[2]<self.limit[1]:
                         print 'scanning...'
                         self.StartScan_judge= True
@@ -457,10 +474,13 @@ class App:
             try:
                 Target_X= int(self.entry_Xpos.get())
                 Target_Y= int(self.entry_Ypos.get())
+                Target_Z= int(self.entry_Zpos.get())
                 if (Target_X>=0) & (Target_X<=self.limit[0]) & (Target_Y>=0) & (Target_Y<=self.limit[1]):
-                    cmd= 'G00 X{0} Y{1}'.format(Target_X, Target_Y)
-                    self.ArdMntr.serial_send(cmd)
-                    print 'Command: ', cmd
+                    #cmd= 'G00 X{0} Y{1}'.format(Target_X, Target_Y)
+                    #self.ArdMntr.serial_send(cmd)
+                    print 'ArdMntr.move_Coord...'
+                    self.ArdMntr.move_Coord(Target_X, Target_Y, Target_Z)
+                    print 'Command: '
                     time.sleep(1)                
                 else:
                     tkMessageBox.showerror("Error", "The range of X should be in [0~{0}]\nThe range of Y should be in [0~{1}]".format(self.limit[0],self.limit[1]))
@@ -505,8 +525,9 @@ class App:
                         #tmp_X, tmp_Y= self.scan_X[0]+ step_X*self.scan_X[1], self.scan_Y[0]+ step_Y*self.scan_Y[1]
                         print 'X, Y: ', tmp_X, ', ', tmp_Y
                         #self.saveScanning= 'Raw_{0}_{1}.png'.format(self.scan_X[0]+ step_X*self.scan_X[1], self.scan_Y[0]+ step_Y*self.scan_Y[1])
-                        cmd= 'G00 X{0} Y{1}'.format(tmp_X, tmp_Y)
-                        self.ArdMntr.serial_send(cmd)
+                        #cmd= 'G00 X{0} Y{1}'.format(tmp_X, tmp_Y)
+                        #self.ArdMntr.serial_send(cmd)
+                        self.ArdMntr.move_Coord(tmp_X, tmp_Y, self.input_Zpos)
                         time.sleep(1)
                         while 1:
                             if (self.ArdMntr.cmd_state.is_ready()):
