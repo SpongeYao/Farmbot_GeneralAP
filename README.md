@@ -75,8 +75,8 @@ ino upload
 ```
 
 ### Python lib
-Tkinter
-opencv
-python-serial
+Tkinter  
+opencv  
+python-serial  
 
 
