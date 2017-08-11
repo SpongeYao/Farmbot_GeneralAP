@@ -32,6 +32,7 @@ class CmdState:
         self.cmd_state = CMDSTATE_R00
         self.strCurX= "-1"
         self.strCurY= "-1"
+        self.strCurZ= "-1"
 
     def is_ready(self):
         if self.cmd_state == CMDSTATE_R00 or self.cmd_state == CMDSTATE_R02 or self.cmd_state == CMDSTATE_R03:
@@ -69,7 +70,8 @@ class CmdState:
             #self.cmd_state = CMDSTATE_R82
             self.strCurX= cmd_str1[1].strip('X')
             self.strCurY= cmd_str1[2].strip('Y')
-            #print cmd_str1[1],', ',cmd_str1[2]
+            self.strCurZ= cmd_str1[3].strip('Z')
+            #print '===> ',cmd_str1[1],', ',cmd_str1[2],', ',cmd_str1[3]
 
         self.cmd_str = cmd_str.strip()
         #print("state by recv:%i" %(self.cmd_state))
@@ -135,26 +137,31 @@ class MonitorThread(threading.Thread):
         self.ser.write(send_str + " \r\n")
         self.cmd_state.set_by_send(send_str)
 
-    def move_Coord(self, arg_Xpos, arg_Ypos):
-        cmd= 'G00 X{0} Y{1}'.format(arg_Xpos, arg_Ypos)
+    def move_Coord(self, arg_Xpos, arg_Ypos, arg_Zpos):
+        cmd= 'G00 X{0} Y{1} Z{2}'.format(arg_Xpos, arg_Ypos, arg_Zpos)
         self.serial_send(cmd)
-        time.sleep(1)
+        time.sleep(0.5)
     
     def set_MaxSpeed(self, arg_spd, arg_index):
         if arg_index.lower() == 'x':
             cmd= 'F22 P71 V{0}'.format(arg_spd)
-        else:
+
+        elif arg_index.lower() == 'y' :
             cmd= 'F22 P72 V{0}'.format(arg_spd)
+        else:
+            cmd= 'F22 P73 V{0}'.format(arg_spd)
         self.serial_send(cmd)
-        time.sleep(0.02)
+        time.sleep(0.05)
     
     def set_Acceleration(self, arg_acc, arg_index):
         if arg_index.lower() == 'x':
             cmd= 'F22 P41 V{0}'.format(arg_acc)
-        else:
+        elif arg_index.lower() == 'y' :
             cmd= 'F22 P42 V{0}'.format(arg_acc)
+        else:
+            cmd= 'F22 P43 V{0}'.format(arg_acc)
         self.serial_send(cmd)
-        time.sleep(0.02)
+        time.sleep(0.05)
 
 '''
 def main():

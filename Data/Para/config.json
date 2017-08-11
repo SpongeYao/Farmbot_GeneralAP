@@ -1,1 +1,1 @@
-{"thrshd_gray": 58, "Scan_Y (Beg,Interval,Amount)": [0, 1000, 2], "Ac/Deceleration (X, Y)": [50, 50], "Scan_X (Beg,Interval,Amount)": [0, 1000, 3], "thrshd_size": 256, "limit Maximum (X,Y)": [85000, 95000], "Max Speed (X, Y)": [500, 600]}
+{"thrshd_gray": 58, "Scan_Y (Beg,Interval,Amount)": [0, 1000, 2], "Ac/Deceleration (X, Y)": [50, 50, 100], "Scan_X (Beg,Interval,Amount)": [0, 1000, 3], "thrshd_size": 36, "limit Maximum (X,Y)": [85000, 95000], "Max Speed (X, Y)": [500, 600, 400]}
