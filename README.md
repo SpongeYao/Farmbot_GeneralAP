@@ -76,6 +76,34 @@ ino build
 ino upload
 ```
 
+### Command Line for install openCV and its environments
+```
+sudo apt-get -y update
+sudo apt-get -y upgrade
+sudo apt-get -y dist-upgrade
+sudo apt-get -y autoremove
+
+sudo apt-get install -y build-essential cmake
+sudo apt-get install -y python-dev python-tk python-numpy python3-dev python3-tk python3-numpy
+sudo apt-get install -y python-imaging-tk sudo python-tk idle python-pmw python-imaging
+sudo apt-get install -y libgtk2.0-dev
+sudo apt-get install -y qt5-default libvtk6-dev
+sudo apt-get install -y zlib1g-dev libjpeg-dev libwebp-dev libpng-dev libtiff5-dev libjasper-dev libopenexr-dev libgdal-dev
+sudo apt-get install -y libtbb-dev libeigen3-dev
+sudo apt-get install -y ant default-jdk
+sudo apt-get install -y doxygen
+
+git clone https://github.com/opencv/opencv.git
+cd opencv
+git checkout 2.4
+mkdir build
+cd build
+sudo cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D BUILD_NEW_PYTHON_SUPPORT=ON -D INSTALL_C_EXAMPLES=ON -D INSTALL_PYTHON_EXAMPLES=ON -D WITH_FFMPEG=OFF -D BUILD_EXAMPLES=ON ..
+sudo make -j4
+sudo make install
+sudo ldconfig
+```
+
 ### Python lib
 Tkinter  
 opencv  
