@@ -318,6 +318,7 @@ class App:
             del(self.CamMntr.thread_clean_buffer)
             print 'Close Scanning Thread...'
             del(self.thread_scanning)
+            print self.MaxSpeed
             self.root.destroy()
 
     def UI_callback(self):
@@ -329,6 +330,9 @@ class App:
         self.lbl_CurrPos.config(text= tmp_text)
         self.lbl_CurrPos.after(10,self.UI_callback)
     
+    def mouse_motion(self, event):
+        mouse_x, mouse_y= event.x, event.y
+
     def check_status(self):
         self.statuslabel.config(text= self.strStatus)
         self.statuslabel.after(10,self.check_status)
@@ -380,16 +384,22 @@ class App:
         self.CamMntr.connect_camera()
 
     def set_Motor(self):
-        Var= MotorSetting(self.root, self.MaxSpeed, self.Acceleration)
-        if Var.result is not None:
-            print 'result: ',Var.result
-            self.MaxSpeed= [Var.result[0], Var.result[2]]
-            self.Acceleration= [Var.result[1], Var.result[3]]
-            self.ArdMntr.set_MaxSpeed(self.MaxSpeed[0],'x')
-            self.ArdMntr.set_MaxSpeed(self.MaxSpeed[1],'y')
-            self.ArdMntr.set_Acceleration(self.Acceleration[0],'x')
-            self.ArdMntr.set_Acceleration(self.Acceleration[1],'y')
-        #self.ArdMntr.set_MaxSpeed()
+        if self.ArdMntr.connect:
+            Var= MotorSetting(self.root, self.MaxSpeed, self.Acceleration)
+            if Var.result is not None:
+                print 'result: ',Var.result
+                #self.MaxSpeed= [Var.result[0], Var.result[2]]
+                #self.Acceleration= [Var.result[1], Var.result[3]]
+                self.MaxSpeed= [Var.result[0], Var.result[2], Var.result[4]]
+                self.Acceleration= [Var.result[1], Var.result[3], Var.result[5]]
+                self.ArdMntr.set_MaxSpeed(self.MaxSpeed[0],'x')
+                self.ArdMntr.set_MaxSpeed(self.MaxSpeed[1],'y')
+                self.ArdMntr.set_Acceleration(self.Acceleration[0],'x')
+                self.ArdMntr.set_Acceleration(self.Acceleration[1],'y')
+            #self.ArdMntr.set_MaxSpeed()
+        else:
+            tkMessageBox.showerror("Error", "Arduino connection refused!\n Please check its connection.")
+
 
     def set_frame(self, frame):
         self.frame= frame
