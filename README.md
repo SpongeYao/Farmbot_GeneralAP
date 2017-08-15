@@ -104,10 +104,11 @@ sudo make install
 sudo ldconfig
 ```
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> d4d36117472432bbc1e1ec0283f49946ded68e72
 ### Python lib
 Tkinter  
 opencv  
 python-serial  
-
-
