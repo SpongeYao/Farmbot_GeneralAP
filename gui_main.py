@@ -70,7 +70,7 @@ class App:
         self.Acceleration= params[self.ItemList[6]]
 
         self.imageProcessor= class_ImageProcessing.contour_detect(self.savePath,self.saveParaPath)
-        self.drawing= False
+        self.checkmouse_panel_mergeframe= False
         self.x1, self.y1, self.x2, self.y2= -1,-1,-1,-1        
         self.StartScan_judge= False
         self.saveScanning= 'XXX'
@@ -82,6 +82,7 @@ class App:
         print 'w, h: ',[self.root.winfo_width(), self.root.winfo_height()]
         btn_width, btn_height= 18, 1
         self.interval_x, self.interval_y= 6, 6
+        self.mergeframe_spaceY= 50
         #print width,',', height,' ; ',btn_width,',', btn_height
         
         # ====== [Config] Menu Bar============
@@ -214,13 +215,13 @@ class App:
         self.lbl_scracth_detect.place(x= self.interval_x, y= self.btn_StartScan.winfo_y()+ self.btn_StartScan.winfo_height()+self.interval_y)
         self.root.update()
         
-        self.scale_threshold_graylevel = Tkinter.Scale(self.root , from_= 0 , to = 255 , orient = Tkinter.HORIZONTAL , label = "(Unused) gray_level", font = myfont12, width = 10, length = 200 )
+        self.scale_threshold_graylevel = Tkinter.Scale(self.root , from_= 0 , to = 255 , orient = Tkinter.HORIZONTAL , label = "(Unused) gray_level", font = myfont12, width = 11, length = 230 )
         self.scale_threshold_graylevel.set(self.threshold_graylevel)
         self.scale_threshold_graylevel.place(x= self.lbl_scracth_detect.winfo_x(), y= self.lbl_scracth_detect.winfo_y()+ self.lbl_scracth_detect.winfo_height())
         self.scale_threshold_graylevel.config(state= 'disabled')
         self.root.update()
 
-        self.scale_threshold_size = Tkinter.Scale(self.root , from_ = 0 , to = 500 , orient = Tkinter.HORIZONTAL , label = "contour_size", font = myfont12, width = 10, length = 200 )
+        self.scale_threshold_size = Tkinter.Scale(self.root , from_ = 0 , to = 500 , orient = Tkinter.HORIZONTAL , label = "contour_size", font = myfont12, width = 11, length = 230 )
         self.scale_threshold_size.set(self.threshold_size)
 
         self.scale_threshold_size.place(x= self.scale_threshold_graylevel.winfo_x(), y= self.scale_threshold_graylevel.winfo_y()+ self.scale_threshold_graylevel.winfo_height())
@@ -272,6 +273,7 @@ class App:
         self.panel.after(50, self.check_frame_update)
         self.lbl_CurrPos.after(5, self.UI_callback)
         self.statuslabel.after(5, self.check_status)
+        self.panel_mergeframe.bind('<Button-1>',self.mouse_LeftClick)
         # ====== Override CLOSE function ==============
         self.root.protocol('WM_DELETE_WINDOW',self.on_exit)
         # ====== Thread ========
@@ -330,8 +332,31 @@ class App:
         self.lbl_CurrPos.config(text= tmp_text)
         self.lbl_CurrPos.after(10,self.UI_callback)
     
-    def mouse_motion(self, event):
-        mouse_x, mouse_y= event.x, event.y
+    def mouse_LeftClick(self, event):
+        if self.checkmouse_panel_mergeframe:
+            mouse_x, mouse_y= event.x, event.y
+            #print '>> mouse(X,Y): ',mouse_x, mouse_y
+            #print '>> split(X,Y): ', self.mergeframe_splitX, self.mergeframe_splitY
+
+            begX= self.interval_x
+            begY= self.mergeframe_spaceY
+            tmp_X, tmp_Y= int((mouse_x-begX)/self.mergeframe_splitX), int((mouse_y-begY)/self.mergeframe_splitY)
+            #print '>> RANGE(X,Y): ',begY+ self.mergeframe_splitY*self.scan_Y[2] ,begX+ self.mergeframe_splitX*self.scan_X[2]
+            if begX< mouse_x < begX+ self.mergeframe_splitX*self.scan_Y[2] and begY< mouse_y< begY+ self.mergeframe_splitY*self.scan_X[2]:
+                tmp_filename= '{0}_{1}'.format(tmp_Y*self.scan_X[1], tmp_X*self.scan_Y[1]) 
+                #print 'click file: ', tmp_filename
+                tmp_frame= cv2.imread(self.savePath+'Scanning/Raw_'+tmp_filename+'.jpg')
+                self.imagename= tmp_filename
+                self.singleframe= tmp_frame.copy()
+                self.display_panel_singleframe(tmp_frame)
+
+                mergeframe_canvas= self.mergeframe.copy()
+                cv2.rectangle(mergeframe_canvas,(begX+self.mergeframe_splitX*tmp_X,begY+self.mergeframe_splitY*tmp_Y),(begX+self.mergeframe_splitX*(tmp_X+1), begY+self.mergeframe_splitY*(tmp_Y+1)),(0,255,100),2 )
+                result = Image.fromarray(mergeframe_canvas)
+                result = ImageTk.PhotoImage(result)
+                self.panel_mergeframe.configure(image = result)
+                self.panel_mergeframe.image = result
+            
 
     def check_status(self):
         self.statuslabel.config(text= self.strStatus)
@@ -351,6 +376,7 @@ class App:
             self.entry_ScanInterval_Y.config(state= 'disabled')
             self.entry_ScanAmount_X.config(state= 'disabled')
             self.entry_ScanAmount_Y.config(state= 'disabled')
+            self.checkmouse_panel_mergeframe= False
         else:
             self.btn_MoveTo.config(state= 'normal')
             self.entry_Xpos.config(state= 'normal')
@@ -364,6 +390,7 @@ class App:
             self.entry_ScanInterval_Y.config(state= 'normal')
             self.entry_ScanAmount_X.config(state= 'normal')
             self.entry_ScanAmount_Y.config(state= 'normal')
+            self.checkmouse_panel_mergeframe= True
 
     def plastic_set_background(self):
         frame= self.CamMntr.get_frame()
@@ -374,7 +401,7 @@ class App:
         #result= self.CamMntr.subract_test()
         self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
         self.imageProcessor.set_threshold_graylevel(int(self.scale_threshold_graylevel.get()))
-        result= self.imageProcessor.get_contour(self.singleframe, True, self.savePath, 'Otus_Binary.png')
+        result= self.imageProcessor.get_contour(self.singleframe, True, self.savePath, 'Otsu_Binary_'+self.imagename)
         self.display_panel_singleframe(result)
 
     def set_ArdConnect(self):
@@ -394,8 +421,10 @@ class App:
                 self.Acceleration= [Var.result[1], Var.result[3], Var.result[5]]
                 self.ArdMntr.set_MaxSpeed(self.MaxSpeed[0],'x')
                 self.ArdMntr.set_MaxSpeed(self.MaxSpeed[1],'y')
+                self.ArdMntr.set_MaxSpeed(self.MaxSpeed[2],'z')
                 self.ArdMntr.set_Acceleration(self.Acceleration[0],'x')
                 self.ArdMntr.set_Acceleration(self.Acceleration[1],'y')
+                self.ArdMntr.set_Acceleration(self.Acceleration[2],'z')
             #self.ArdMntr.set_MaxSpeed()
         else:
             tkMessageBox.showerror("Error", "Arduino connection refused!\n Please check its connection.")
@@ -425,9 +454,12 @@ class App:
         tmp_frame= cv2.cvtColor(arg_frame, cv2.COLOR_BGR2RGB)
         tmp_frame= cv2.resize(tmp_frame,(self.mergeframe_splitX,self.mergeframe_splitY),interpolation=cv2.INTER_LINEAR)
         begX= self.interval_x+self.mergeframe_splitX*arg_stepX
-        begY= 50+ self.mergeframe_splitY* arg_stepY 
-        begY= self.mergeframe_height- 50- self.mergeframe_splitY*arg_stepY
-        self.mergeframe[begY-self.mergeframe_splitY:begY, begX: begX+ self.mergeframe_splitX]= tmp_frame
+        begY= self.mergeframe_spaceY+ self.mergeframe_splitY* arg_stepY 
+        self.mergeframe[begY:begY+ self.mergeframe_splitY, begX: begX+ self.mergeframe_splitX]= tmp_frame
+        #begY= self.mergeframe_height- 50- self.mergeframe_splitY*arg_stepY
+        #self.mergeframe[begY-self.mergeframe_splitY:begY, begX: begX+ self.mergeframe_splitX]= tmp_frame
+        self.mergeframe_stepX= arg_stepX
+        self.mergeframe_stepY= arg_stepY
         print '>> mergeframe_splitY, splitX= ', self.mergeframe_splitY, ', ', self.mergeframe_splitX
         print '>> tmp_frame.shape[0,1]= ', tmp_frame.shape[0],', ',tmp_frame.shape[1]
         
@@ -448,6 +480,7 @@ class App:
         else:
             if self.ArdMntr.connect:
                 try:
+                    # scan= [beg Point, scan Interval, scan amount]
                     self.reset_mergeframe()
                     self.scan_X= [int(self.entry_1stXpos.get()), int(self.entry_ScanInterval_X.get()), int(self.entry_ScanAmount_X.get())]
                     self.scan_Y= [int(self.entry_1stYpos.get()), int(self.entry_ScanInterval_Y.get()), int(self.entry_ScanAmount_Y.get())]
@@ -474,8 +507,9 @@ class App:
     def btn_saveImg_click(self):
         #self.saveImg= True
         #self.Lock_UI(False)
+        self.imagename= 'Frame1'
         self.singleframe = self.CamMntr.get_frame()
-        self.saveImg_function(self.singleframe, self.savePath, 'Frame1')
+        self.saveImg_function(self.singleframe, self.savePath, self.imagename)
         self.display_panel_singleframe(self.singleframe)
 
 
@@ -544,7 +578,8 @@ class App:
                         while 1:
                             if (self.ArdMntr.cmd_state.is_ready()):
                                 time.sleep(1)
-                                self.saveScanning= '{0}_'.format(step)+self.ArdMntr.cmd_state.strCurX+'_'+self.ArdMntr.cmd_state.strCurY
+                                #self.saveScanning= '{0}_'.format(step)+self.ArdMntr.cmd_state.strCurX+'_'+self.ArdMntr.cmd_state.strCurY
+                                self.saveScanning= self.ArdMntr.cmd_state.strCurX+'_'+self.ArdMntr.cmd_state.strCurY
                                 frame= self.CamMntr.get_frame()
                                 self.saveImg_function(frame, self.savePath+'Scanning/','Raw_'+self.saveScanning)
                                 result= self.imageProcessor.get_contour(frame, True, self.savePath+'Scanning/', 'Detect_'+self.saveScanning)
