@@ -85,7 +85,7 @@ class MonitorThread(threading.Thread):
         self.wait = wait
         self.exit = False
         self.connect = False
-        self.channel=['/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2', '/dev/tty0']
+        self.channel=['/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2', '/dev/tty0', '/dev/ttyUSB0']
         self.connect_serial()
         self.cmd_state = CmdState()
 
