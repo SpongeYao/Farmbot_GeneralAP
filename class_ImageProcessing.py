@@ -44,12 +44,16 @@ class contour_detect():
         else:
             return False
 
-    def get_contour(self, arg_frame, arg_export_index, arg_export_path, arg_export_filename):
-
+    def get_contour(self, arg_frame, arg_export_index, arg_export_path, arg_export_filename, arg_binaryMethod):
         # Otsu's thresholding after Gaussian filtering
         tmp = cv2.cvtColor(arg_frame, cv2.COLOR_RGB2GRAY)
         blur = cv2.GaussianBlur(tmp,(5,5),0)
-        ret,thresholdedImg = cv2.threshold(blur,0 ,255 ,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        if arg_binaryMethod== 0:
+            ret, thresholdedImg= cv2.threshold(blur.copy() , self.threshold_graylevel, 255 , 0)
+        elif arg_binaryMethod == 1:
+            ret,thresholdedImg = cv2.threshold(blur.copy(),0 ,255 ,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        elif arg_binaryMethod== 2:
+            thresholdedImg = cv2.adaptiveThreshold(blur.copy(),255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,5,0)
 
         result = cv2.cvtColor(thresholdedImg, cv2.COLOR_GRAY2RGB)
         ctrs, hier = cv2.findContours(thresholdedImg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
