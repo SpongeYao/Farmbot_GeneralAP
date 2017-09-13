@@ -5,32 +5,54 @@ The Python code with a user interface is porvided with following functions:
 2. auto scanning function by setting start point, scanning interval and scanning amount
 3. real-time image display 
 4. image processing function(otsu method is provided here)
-5. basic setting function(Max Speed & Acceleration)
+5. Motor Setting function (MAX speed, Acceleration)
+6. Camera Setting (Camera ID)
+7. Periperal Setting (PIN Number)
 
-![GUI of gui_main.py](./gui_1.png)
+![GUI of gui_main.py](./Manual/gui_1.png)
 
 > * The communication between Arduino and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Arduino' button in menubar  
 > * The communication between Camera and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Camera' button in menubar  
 > * The parameters on UI are saved automatically after the program is closed.   
 
+Move Control 
+-----------------------
+![GUI of gui_main.py](./Manual/gui_tabpage_Control.png)  
+<Hot Key>  
+move amount(100, 500, 1k, 10k, 100k):  F1~F5  
+Up, Down, Left, Right: ↑, ↓, ←, →  
+Z-Up, Z-Down: ctrl+↑, ctrl+↓  
+
+Motor Setting 
+-----------------------
+![GUI of gui_main.py](./Manual/gui_MotorSetting.png)  
+
+Camera Setting
+-----------------------
+![GUI of gui_main.py](./Manual/gui_CamSetting.png)  
+
+Peripheral Setting
+-----------------------
+![GUI of gui_main.py](./Manual/gui_Periperals.png)  
+
+
 ```command line: 
-python gui_main.py
+sudo python gui_main.py
 ```
 
-### Arduino Code
+Arduino Code
+-----------------------
 Reference by Farmbot:
     https://github.com/FarmBot/farmbot-arduino-firmware 
 
-Parameters for commands
------------------------
+### Parameters for commands  
 Parameters|Description            |Unit of Measurement
 ----------|-----------------------|-------------------
 X         |X movement             |steps
 Y         |Y movement             |steps
 Z         |Z movement	          |steps
 
-Arduino parameter numbers
-------------------------
+### Arduino parameter numbers
 ID   | Name
 -----|----------------------------
 41   | MOVEMENT_STEPS_ACC_DEC_X
@@ -40,24 +62,24 @@ ID   | Name
 72   | MOVEMENT_MAX_SPD_Y
 73   | MOVEMENT_MAX_SPD_Z
 
-Codes sent to the arduino
-------------------------
-Moving 100, 200, 300 steps on X & Y & Z direction respectively
+### Codes sent to the arduino
+e.g. Moving 100, 200, 300 steps on X & Y & Z direction respectively
 ```
 G00 X100 Y200 Z300
 ```
-Read the Parameter Value of X acceleration
+e.g. Read the Parameter Value of X acceleration
 ```
 F21 P41
 ```
-Change the Parameter Value of Y acceleration to 300
+e.g. Change the Parameter Value of Y acceleration to 300
 ```
 F22 P41 V300
 ```
 
 P.S. The oservation speed could be changed by setting MOVEMENT_MAX_SPD or MOVEMENT_STEPS_ACC_DEC
 
-### Command line for install Arudino and its related lib
+Command line for install Arudino and its related lib
+-----------------------
 ```
 sudo apt-get install arduino gcc-avr avr-libc avrdude python-configobj python-jinja2 python-serial
 mkdir tmp
@@ -76,7 +98,8 @@ ino build
 ino upload
 ```
 
-### Command Line for install openCV and its environments
+Command Line for install openCV and its environments
+-----------------------
 ```
 sudo apt-get -y update
 sudo apt-get -y upgrade
@@ -103,12 +126,9 @@ sudo make -j4
 sudo make install
 sudo ldconfig
 ```
-
-<<<<<<< HEAD
-
-=======
->>>>>>> d4d36117472432bbc1e1ec0283f49946ded68e72
-### Python lib
+   
+Python lib
+-----------------------
 Tkinter  
 opencv  
 python-serial  

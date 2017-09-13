@@ -141,7 +141,13 @@ class MonitorThread(threading.Thread):
         cmd= 'G00 X{0} Y{1} Z{2}'.format(arg_Xpos, arg_Ypos, arg_Zpos)
         self.serial_send(cmd)
         time.sleep(0.5)
-    
+
+    def get_CurPosition(self):
+        tmp_x= int(self.cmd_state.strCurX)
+        tmp_y= int(self.cmd_state.strCurY)
+        tmp_z= int(self.cmd_state.strCurZ)
+        return tmp_x, tmp_y, tmp_z
+
     def set_MaxSpeed(self, arg_spd, arg_index):
         if arg_index.lower() == 'x':
             cmd= 'F22 P71 V{0}'.format(arg_spd)
