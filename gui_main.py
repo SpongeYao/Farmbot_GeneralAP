@@ -5,6 +5,7 @@ import json
 import random
 import math
 import time
+import types
 #import Tkinter
 from Tkinter import *
 import ttk
@@ -207,32 +208,32 @@ class App:
         # Move 1 interval at specific Axis
         # ==================================================
         photo_up= self.IconResize(self.saveParaPath+'img_Up.png')
-        self.btn_MoveUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2', command= self.btn_MoveUp_click)
+        self.btn_MoveUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Up'))
         self.btn_MoveUp.image= photo_up
         self.btn_MoveUp.place(x= self.rdbtn_MvAmount_10.winfo_x()+int(self.rdbtn_MvAmount_10.winfo_reqwidth()*0), y=self.rdbtn_MvAmount_1.winfo_y()+ self.rdbtn_MvAmount_1.winfo_reqheight()+ self.interval_y)
         self.root.update()
         photo_down= self.IconResize(self.saveParaPath+'img_Down.png')
-        self.btn_MoveDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2', command= self.btn_MoveDown_click)
+        self.btn_MoveDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Down'))
         self.btn_MoveDown.image= photo_down
         self.btn_MoveDown.place(x= self.btn_MoveUp.winfo_x(), y=self.btn_MoveUp.winfo_y()+ self.btn_MoveUp.winfo_reqheight()+ self.interval_y)
         self.root.update()
         photo_left= self.IconResize(self.saveParaPath+'img_Left.png')
-        self.btn_MoveLeft= Tkinter.Button(self.tab_control,image= photo_left, cursor= 'hand2', command= self.btn_MoveLeft_click)
+        self.btn_MoveLeft= Tkinter.Button(self.tab_control,image= photo_left, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Left'))
         self.btn_MoveLeft.image= photo_left
         self.btn_MoveLeft.place(x= self.btn_MoveDown.winfo_x()- self.btn_MoveDown.winfo_width()- self.interval_x, y=self.btn_MoveDown.winfo_y())
         self.root.update()
         photo_right= self.IconResize(self.saveParaPath+'img_Right.png')
-        self.btn_MoveRight= Tkinter.Button(self.tab_control,image= photo_right, cursor= 'hand2', command= self.btn_MoveRight_click)
+        self.btn_MoveRight= Tkinter.Button(self.tab_control,image= photo_right, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Right'))
         self.btn_MoveRight.image= photo_right
         self.btn_MoveRight.place(x= self.btn_MoveDown.winfo_x()+ self.btn_MoveDown.winfo_width()+ self.interval_x, y=self.btn_MoveDown.winfo_y())
         self.root.update()
 
 
-        self.btn_MoveZUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2', command= self.btn_MoveZUp_click)
+        self.btn_MoveZUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2', command= lambda: self.btn_MoveAmountZaxis_click('Up'))
         self.btn_MoveZUp.image= photo_up
         self.btn_MoveZUp.place(x= self.btn_MoveRight.winfo_x()+ self.btn_MoveRight.winfo_reqwidth()+ self.interval_x*4, y=self.btn_MoveUp.winfo_y())
         self.root.update()
-        self.btn_MoveZDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2', command= self.btn_MoveZDown_click)
+        self.btn_MoveZDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2', command= lambda: self.btn_MoveAmountZaxis_click('Down'))
         self.btn_MoveZDown.image= photo_down
         self.btn_MoveZDown.place(x= self.btn_MoveZUp.winfo_x(), y=self.btn_MoveDown.winfo_y())
         self.root.update()
@@ -288,6 +289,7 @@ class App:
         self.root.update()
         self.btn_MoveTo= Tkinter.Button(self.tab_control, text= 'GO', command= self.btn_MoveTo_click,font= myfont12_Bold, bg= self.bgGreen, fg= 'white', activebackground= self.bgGreen_active, activeforeground= 'white')
         self.btn_MoveTo.place(x= self.lbl_posUnit.winfo_x()+ self.lbl_posUnit.winfo_reqwidth()+ self.interval_x, y=self.lbl_Ypos.winfo_y())
+        self.btn_MoveTo.focus_set()
         self.root.update()
 
         # ==================================================
@@ -431,6 +433,25 @@ class App:
         self.lbl_CurrPos.after(5, self.UI_callback)
         self.statuslabel.after(5, self.check_status)
         self.panel_mergeframe.bind('<Button-1>',self.mouse_LeftClick)
+        self.root.bind('<F1>',self.rdbtn_click)
+        self.root.bind('<F2>',self.rdbtn_click)
+        self.root.bind('<F3>',self.rdbtn_click)
+        self.root.bind('<F4>',self.rdbtn_click)
+        self.root.bind('<F5>',self.rdbtn_click)
+        #self.root.bind('<Up>',self.btn_MoveUp_click)
+        self.root.bind('<Up>',self.btn_MoveAmount_click)
+        self.root.bind('<Down>',self.btn_MoveAmount_click)
+        self.root.bind('<Left>',self.btn_MoveAmount_click)
+        self.root.bind('<Right>',self.btn_MoveAmount_click)
+        self.root.bind('<Control-Up>',self.btn_MoveAmountZaxis_click)
+        self.root.bind('<Control-Down>',self.btn_MoveAmountZaxis_click)
+        '''
+        self.root.bind('<Down>',self.btn_MoveDown_click)
+        self.root.bind('<Left>',self.btn_MoveLeft_click)
+        self.root.bind('<Right>',self.btn_MoveRight_click)
+        self.root.bind('<Control-Up>',self.btn_MoveZUp_click)
+        self.root.bind('<Control-Down>',self.btn_MoveZDown_click)
+        '''
         # ====== Override CLOSE function ==============
         self.root.protocol('WM_DELETE_WINDOW',self.on_exit)
         # ==================================================
@@ -607,7 +628,8 @@ class App:
         #Var= PeripheralSetting(self.root, [('Fan',8),('Water Pump',9)])
         #print '>>> ',self.Peripheral_para
         Var= PeripheralSetting(self.root, self.Peripheral_para)
-        self.Peripheral_para= Var.result
+        if Var.result is not None:
+            self.Peripheral_para= Var.result
         print '*** Return Value: ',Var.result
 
     def set_Motor(self):
@@ -668,10 +690,53 @@ class App:
         self.panel_mergeframe.configure(image = result)
         self.panel_mergeframe.image = result
 
-    def rdbtn_click(self):
+    def rdbtn_click(self, event= None):
+        if event is not None:
+            if event.keysym == 'F1':
+                self.rdbtn_MvAmount_1.select()
+            elif event.keysym == 'F2':
+                self.rdbtn_MvAmount_5.select()
+            elif event.keysym == 'F3':
+                self.rdbtn_MvAmount_10.select()
+            elif event.keysym == 'F4':
+                self.rdbtn_MvAmount_50.select()
+            elif event.keysym == 'F5':
+                self.rdbtn_MvAmount_100.select()
         self.Move_interval= self.MvAmount.get()
         print 'rdVal',self.Move_interval
 
+    def btn_MoveAmount_click(self, event= None):
+        if type(event) is types.StringType:
+            move_type= event 
+        else:
+            print'event.keysym ', event.keysym
+            print 'event.keycode', event.keycode
+            move_type= event.keysym
+            print 'Test ',move_type is 'Up'
+
+        tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+        if move_type == 'Up':
+            self.ArdMntr.move_Coord(tmp_x+ self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
+        elif move_type == 'Down':
+            self.ArdMntr.move_Coord(tmp_x- self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
+        elif move_type == 'Left':
+            self.ArdMntr.move_Coord(tmp_x, tmp_y-self.Move_interval*self.Move_intervalUnit, tmp_z)
+        elif move_type == 'Right':
+            self.ArdMntr.move_Coord(tmp_x, tmp_y+self.Move_interval*self.Move_intervalUnit, tmp_z)
+
+    def btn_MoveAmountZaxis_click(self, event= None):
+        if type(event) is types.StringType:
+            move_type= event 
+        else:
+            move_type= event.keysym
+        
+        tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+        if move_type == 'Up':
+            self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z+ self.Move_interval*self.Move_intervalUnit)
+        elif move_type == 'Down':
+            self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z- self.Move_interval*self.Move_intervalUnit)
+
+    '''
     def btn_MoveUp_click(self):
         if self.ArdMntr.connect:
             tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
@@ -688,14 +753,15 @@ class App:
         if self.ArdMntr.connect:
             tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
             self.ArdMntr.move_Coord(tmp_x, tmp_y- self.Move_interval*self.Move_intervalUnit, tmp_z)
-    def btn_MoveZUp_click(self):
+    def btn_MoveZUp_click(self, event=None):
         if self.ArdMntr.connect:
             tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
             self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z+ self.Move_interval*self.Move_intervalUnit)
-    def btn_MoveZDown_click(self):
+    def btn_MoveZDown_click(self, event=None):
         if self.ArdMntr.connect:
             tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
             self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z- self.Move_interval*self.Move_intervalUnit)
+    '''
     def btn_Seed_click(self):
         if self.ArdMntr.connect:
             print 'Seeding... '
@@ -817,7 +883,8 @@ class App:
                             self.saveScanning= '{0}_{1}'.format(tmp_X, tmp_Y)
                             frame= self.CamMntr.get_frame()
                             self.saveImg_function(frame, self.savePath+'Scanning/','Raw_'+self.saveScanning)
-                            result= self.imageProcessor.get_contour(frame, True, self.savePath+'Scanning/', 'Detect_'+self.saveScanning,1)
+                            #result= self.imageProcessor.get_contour(frame, True, self.savePath+'Scanning/', 'Detect_'+self.saveScanning,1)
+                            result= frame.copy()
                             self.display_panel_singleframe(result)
                             #self.display_panel_mergeframe(result, step_X, step_Y)
                             #self.display_panel_mergeframe(result, step_Y, step_X)

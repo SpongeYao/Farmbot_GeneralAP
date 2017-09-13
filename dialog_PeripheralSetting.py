@@ -14,7 +14,7 @@ class PeripheralSetting(tkSimpleDialog.Dialog):
         self.__myfont10 = tkFont.Font(family=strFont, size=10)
         self.__myfont10_Bold = tkFont.Font(family=strFont, size=10, weight= tkFont.BOLD)
         self.__PinList= arg_PinList
-        self.__MaxRow= 5
+        self.__MaxRow= 7
         self.__CurrentRow= len(arg_PinList)
         self.__CurGridRow= self.__CurrentRow
         self.__NumberList= range(0, self.__MaxRow+1)
@@ -86,8 +86,10 @@ class PeripheralSetting(tkSimpleDialog.Dialog):
         gridInfo= self.__entries_Func[arg_index].grid_info()
         #print gridInfo
         print 'Clear Grid Row', gridInfo['row']
-        '''
         #'''
+        #'''
+        self.__entries_Func[arg_index].delete(0, 'end')
+        self.__entries_PinNumb[arg_index].delete(0, 'end')
         self.__entries_Func[arg_index].grid_forget()
         self.__entries_PinNumb[arg_index].grid_forget()
         self.__btns_clear[arg_index].grid_forget()
@@ -96,8 +98,8 @@ class PeripheralSetting(tkSimpleDialog.Dialog):
         self.__entries_PinNumb[arg_index].grid_remove()
         self.__btns_clear[arg_index].grid_remove()
         #'''
-        tmp= self.__NumberList[arg_index]
-        del self.__NumberList[arg_index]
+        tmp= self.__NumberList[clear_row]
+        del self.__NumberList[clear_row]
         self.__NumberList.append(tmp)
         self.__CurrentRow= self.__CurrentRow-1
         #print '__CurrentRow:', self.__CurrentRow
@@ -107,25 +109,29 @@ class PeripheralSetting(tkSimpleDialog.Dialog):
         print '============= ADD ============'
         print '### Current Row', self.__CurrentRow
         print 'NumberLIst:', self.__NumberList
-        '''
+        for i in range(1,len(self.__entries_Func)):
+            tmp= self.__NumberList[i]
+            gridInfo= self.__entries_Func[tmp].grid_info()
+            if len(gridInfo)!=0:
+                print 'Row ',str(i),' Entries List[', str(tmp),']: ', self.__entries_Func[tmp].grid_info()['row']
+            else:
+                print 'Row ',str(i),' empty'
+        #'''
         if self.__CurrentRow < self.__MaxRow:
             self.__CurrentRow= self.__CurrentRow+1
-            #self.__CurGridRow= self.__CurGridRow+1
-            self.__CurGridRow= self.__CurrentRow
+            self.__CurGridRow= self.__CurGridRow+1
+            #self.__CurGridRow= self.__CurrentRow
             add_index= self.__NumberList[self.__CurrentRow]
             '''
             print 'Added Row:', self.__CurrentRow
             print 'add_index (NumberList[{0}]): {1}'.format(self.__CurrentRow,add_index)
             print 'Grid Row:', self.__CurGridRow
-            '''
-            #self.__entries_Func[add_index].grid()
+            #'''
             self.__entries_Func[add_index].grid(row=self.__CurGridRow, column=0)
-            self.__entries_Func[add_index].delete(0, 'end')
-            #self.__entries_PinNumb[add_index].grid()
+            #self.__entries_Func[add_index].delete(0, 'end')
             self.__entries_PinNumb[add_index].grid(row=self.__CurGridRow, column=1)
-            #self.__entries_Func[add_index].insert(Tkinter.END, '{0}'.format(add_index))
-            self.__entries_PinNumb[add_index].delete(0, 'end')
+            #self.__entries_PinNumb[add_index].delete(0, 'end')
             self.__btns_clear[add_index].grid(row=self.__CurGridRow, column=2)
-            #self.__btns_clear[add_index].grid()
+            #print 'Row ',str(self.__CurrentRow),' Entries List[', str(add_index),']: ', self.__entries_Func[add_index].grid_info()['row']
         elif self.__CurrentRow== self.__MaxRow:
             print 'Max of Row is ', self.__MaxRow
