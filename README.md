@@ -7,7 +7,7 @@ The Python code with a user interface is porvided with following functions:
 4. image processing function(otsu method is provided here)
 5. basic setting function(Max Speed & Acceleration)
 
-![GUI of gui_main.py](./gui_1.png)
+![GUI of gui_main.py](./Manual/gui_1.png)
 
 > * The communication between Arduino and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Arduino' button in menubar  
 > * The communication between Camera and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Camera' button in menubar  

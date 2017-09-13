@@ -14,9 +14,9 @@ from PIL import ImageTk
 import class_MyThread
 
 class CameraLink:
-    def __init__(self):
+    def __init__(self, arg_camera_id):
         self.__camera_idMatrix= [0, 1, 2, 3]
-        self.camera_id= 0
+        self.camera_id= arg_camera_id
         self.clean_buffer_judge= True
         self.connect= False
         self.connect_camera(self.camera_id)

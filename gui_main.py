@@ -19,6 +19,7 @@ from class_CameraMntr import*
 import class_MyThread
 import class_ImageProcessing
 from class_ConfigSetting import ConfigSetting
+from dialog_PeripheralSetting import PeripheralSetting
 from dialog_MotorSetting import MotorSetting
 from dialog_CameraConnection import CameraConnection
 
@@ -26,11 +27,6 @@ class App:
     # Ininitalization
     def __init__(self,root):
 
-        self.ArdMntr= MonitorThread()
-        self.ArdMntr.start()
-        
-        self.CamMntr= CameraLink()
-        #self.CamMntr.connect_camera()
         strFont= 'Arial'
         myfont14 = tkFont.Font(family=strFont, size=14, weight= tkFont.BOLD)
         myfont12 = tkFont.Font(family=strFont, size=12)#, weight= tkFont.BOLD)
@@ -43,13 +39,16 @@ class App:
         bgGray_select= '#999'
         self.bgRed= '#aa0000'
         self.bgRed_active= '#ee0000'
+        self.Move_intervalUnit= 1000
         '''
         self.root = Tkinter.Tk()
         self.root.title("[Arduino] Stepper Control")
         self.root.attributes('-zoomed', True) # FullScreen
         '''
         self.root= root
-        # ====== Parameters ================================
+        # =================================
+        # Parameters
+        # =================================
         self.savePath= 'Data/'
         self.saveParaPath= 'Data/Para/'
         self.configName= 'config.json'
@@ -72,6 +71,10 @@ class App:
 	defaultValueList.append([400,400,400])
         self.ItemList.append("Ac/Deceleration (X, Y)")
 	defaultValueList.append([100,100,100])
+        self.ItemList.append("Camera ID")
+        defaultValueList.append(0)
+        self.ItemList.append("Periperal Setting")
+        defaultValueList.append([('Fan',8),('Water Pump',9),('Vaccum Pump',10)])
 
         self.config= ConfigSetting(self.saveParaPath, self.configName, defaultValueList)
         params= self.config.read_json(self.ItemList)
@@ -83,6 +86,8 @@ class App:
         self.limit= params[self.ItemList[4]]
         self.MaxSpeed= params[self.ItemList[5]]
         self.Acceleration= params[self.ItemList[6]]
+        self.CameraID= params[self.ItemList[7]]
+        self.Peripheral_para= params[self.ItemList[8]]
 
         self.imageProcessor= class_ImageProcessing.contour_detect(self.savePath,self.saveParaPath)
         self.checkmouse_panel_mergeframe= False
@@ -100,12 +105,15 @@ class App:
         self.mergeframe_spaceY= 50
         #print width,',', height,' ; ',btn_width,',', btn_height
         
-        # ====== [Config] Menu Bar============
+        # =======================================
+        # [Config] Menu Bar
+        # =======================================
         self.menubar= Tkinter.Menu(self.root)
         self.FileMenu = Tkinter.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="File",underline=0, menu=self.FileMenu)
         self.FileMenu.add_command(label="Save Image", command=self.btn_saveImg_click)
         self.SettingMenu = Tkinter.Menu(self.menubar, tearoff=0)
+        self.SettingMenu.add_command(label= "Peripheral Setting", command= self.set_Peripheral)
         self.SettingMenu.add_command(label= "Motor Setting", command= self.set_Motor)
         self.menubar.add_cascade(label="Setting", underline=0, menu=self.SettingMenu)
         self.ConnectMenu = Tkinter.Menu(self.menubar, tearoff=0)
@@ -119,14 +127,17 @@ class App:
         self.root.config(menu= self.menubar)
         self.root.update()
 
-        # ====== [Config] Status Bar ==============
+        # =======================================
+        # [Config] Status Bar
+        # =======================================
         self.statuslabel = Tkinter.Label(self.root, bd = 1, relief = Tkinter.SUNKEN, anchor = "w")
         self.statuslabel.config(text="IDLING ..................")
         self.statuslabel.pack(side = Tkinter.BOTTOM,fill=Tkinter.X)
         self.root.update()
-        #self.screen_height= self.screen_height- self.statuslabel.winfo_reqheight()
 
-        #======= [Config] Tab =================
+        # ====================
+        # [Config] Tabpages
+        # ====================
         #Left_width= self.lbl_MoveCoord.winfo_reqwidth()+ self.interval_x*11
         Left_width= int((self.screen_width-self.interval_x*2)*0.25)
         Left_height= int((self.screen_height-self.FileMenu.winfo_reqheight()*1- self.statuslabel.winfo_reqheight()*1-self.interval_y*5))
@@ -136,16 +147,17 @@ class App:
 	self.tab_imageprocess = Tkinter.Frame(self.root)
 
 	self.tabbox.add(self.tab_control, text="CONTROL")
-	self.tabbox.add(self.tab_pinsetting, text="PIN")
+	#self.tabbox.add(self.tab_pinsetting, text="PIN")
 	self.tabbox.add(self.tab_imageprocess, text="IMAGE")
 
-	#self.tabbox.place(x= self.interval_x, y= self.interval_y)
 	self.tabbox.place(x= 0, y= 0)
         self.root.update()
         print '*** Input Tab', Left_width, Left_height
         print '*** TAB',self.tabbox.winfo_reqwidth(), self.tabbox.winfo_reqheight()
 
-        # ====== [Config] Current position of motor ===========
+        # ==================================================
+        # [Config] Current position of motor
+        # ==================================================
         #self.lbl_CurrCoord= Tkinter.Label(self.root, text="[ Current Position ]", font= myfont14)
         self.lbl_CurrCoord= Tkinter.Label(self.tab_control, text="[ Current Position ]", font= myfont14)
         self.lbl_CurrCoord.place(x= self.interval_x, y= self.interval_y)
@@ -153,74 +165,100 @@ class App:
         self.lbl_CurrPos= Tkinter.Label(self.tab_control, text="(X, Y, Z)= (-1, -1, -1)",font= myfont12)
         self.lbl_CurrPos.place(x= self.interval_x, y= self.lbl_CurrCoord.winfo_y()+ self.lbl_CurrCoord.winfo_height())
         self.root.update()
-        #======[Step Motor Control] ========
+        # ==================================================
+        # [Step Motor Control] 
+        # ==================================================
         self.lbl_MoveCoord= Tkinter.Label(self.tab_control, text="[ MOVE ]", font= myfont14)
         #self.lbl_MoveCoord.place(x= self.interval_x, y= self.lbl_CurrPos.winfo_y()+ self.lbl_CurrPos.winfo_height()+self.interval_y)
         self.lbl_MoveCoord.place(x= self.interval_x, y= self.lbl_CurrPos.winfo_y()+ self.lbl_CurrPos.winfo_height()+self.interval_y)
         self.root.update()
 
-        #========== Move Amount Radio Button ===============
+        # ==================================================
+        #  Move Amount Radio Button
+        # ==================================================
+        self.rdbtnMvAmount_Mode= [('1k', 1),('5k', 5),('10k',10),('50k',50), ('100k',100)]
+
         self.MvAmount= Tkinter.IntVar()
-        self.rdbtn_MvAmount_1= Tkinter.Radiobutton(self.tab_control, text= "1k", variable= self.MvAmount,font= myfont12_Bold, value=1, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
+        self.rdbtn_MvAmount_1= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[0][0], value= self.rdbtnMvAmount_Mode[0][1],variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
         self.rdbtn_MvAmount_1.place(x= self.interval_x, y=self.lbl_MoveCoord.winfo_y()+ self.lbl_MoveCoord.winfo_reqheight()+ self.interval_y)
         self.root.update()
-        self.rdbtn_MvAmount_5= Tkinter.Radiobutton(self.tab_control, text= "5k", value=5, variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
+        self.rdbtn_MvAmount_5= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[1][0], value=self.rdbtnMvAmount_Mode[1][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
         self.rdbtn_MvAmount_5.place(x= self.interval_x+ self.rdbtn_MvAmount_1.winfo_x()+ self.rdbtn_MvAmount_1.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
         self.root.update()
-        self.rdbtn_MvAmount_10= Tkinter.Radiobutton(self.tab_control, text= "10k", value=10, variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
+        self.rdbtn_MvAmount_10= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[2][0], value=self.rdbtnMvAmount_Mode[2][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
         self.rdbtn_MvAmount_10.place(x= self.interval_x+ self.rdbtn_MvAmount_5.winfo_x()+ self.rdbtn_MvAmount_5.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
         self.root.update()
-        self.rdbtn_MvAmount_50= Tkinter.Radiobutton(self.tab_control, text= "50k", value=50, variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
+        self.rdbtn_MvAmount_50= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[3][0], value=self.rdbtnMvAmount_Mode[3][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
         self.rdbtn_MvAmount_50.place(x= self.interval_x+ self.rdbtn_MvAmount_10.winfo_x()+ self.rdbtn_MvAmount_10.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
         self.root.update()
-        self.rdbtn_MvAmount_100= Tkinter.Radiobutton(self.tab_control, text= "100k", value=100, variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
+        self.rdbtn_MvAmount_100= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[4][0], value=self.rdbtnMvAmount_Mode[4][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
         self.rdbtn_MvAmount_100.place(x= self.interval_x+ self.rdbtn_MvAmount_50.winfo_x()+ self.rdbtn_MvAmount_50.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
         self.root.update()
         self.rdbtn_MvAmount_10.select()
+        self.Move_interval= 10
         self.lbl_posUnit_1= Tkinter.Label(self.tab_control, text='(step)')
         self.lbl_posUnit_1.place(x= self.rdbtn_MvAmount_100.winfo_x()+ self.rdbtn_MvAmount_100.winfo_width(), y= self.rdbtn_MvAmount_1.winfo_y()+self.interval_y)
         self.root.update()
         
-        # ======= Move Direction ===============
-        #photo_up=PhotoImage(file=self.saveParaPath+'img_Up.png')
-        #photo_up= photo_up.zoom(1)
-        #photo_up= photo_up.subsample(4)
+        # ==================================================
+        # Move 1 interval at specific Axis
+        # ==================================================
         photo_up= self.IconResize(self.saveParaPath+'img_Up.png')
-        self.btn_MoveUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2')
+        self.btn_MoveUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2', command= self.btn_MoveUp_click)
         self.btn_MoveUp.image= photo_up
         self.btn_MoveUp.place(x= self.rdbtn_MvAmount_10.winfo_x()+int(self.rdbtn_MvAmount_10.winfo_reqwidth()*0), y=self.rdbtn_MvAmount_1.winfo_y()+ self.rdbtn_MvAmount_1.winfo_reqheight()+ self.interval_y)
         self.root.update()
         photo_down= self.IconResize(self.saveParaPath+'img_Down.png')
-        self.btn_MoveDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2')
+        self.btn_MoveDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2', command= self.btn_MoveDown_click)
         self.btn_MoveDown.image= photo_down
         self.btn_MoveDown.place(x= self.btn_MoveUp.winfo_x(), y=self.btn_MoveUp.winfo_y()+ self.btn_MoveUp.winfo_reqheight()+ self.interval_y)
         self.root.update()
         photo_left= self.IconResize(self.saveParaPath+'img_Left.png')
-        self.btn_MoveLeft= Tkinter.Button(self.tab_control,image= photo_left, cursor= 'hand2')
+        self.btn_MoveLeft= Tkinter.Button(self.tab_control,image= photo_left, cursor= 'hand2', command= self.btn_MoveLeft_click)
         self.btn_MoveLeft.image= photo_left
         self.btn_MoveLeft.place(x= self.btn_MoveDown.winfo_x()- self.btn_MoveDown.winfo_width()- self.interval_x, y=self.btn_MoveDown.winfo_y())
         self.root.update()
         photo_right= self.IconResize(self.saveParaPath+'img_Right.png')
-        self.btn_MoveRight= Tkinter.Button(self.tab_control,image= photo_right, cursor= 'hand2')
+        self.btn_MoveRight= Tkinter.Button(self.tab_control,image= photo_right, cursor= 'hand2', command= self.btn_MoveRight_click)
         self.btn_MoveRight.image= photo_right
         self.btn_MoveRight.place(x= self.btn_MoveDown.winfo_x()+ self.btn_MoveDown.winfo_width()+ self.interval_x, y=self.btn_MoveDown.winfo_y())
         self.root.update()
 
 
-        self.btn_MoveZUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2')
+        self.btn_MoveZUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2', command= self.btn_MoveZUp_click)
         self.btn_MoveZUp.image= photo_up
         self.btn_MoveZUp.place(x= self.btn_MoveRight.winfo_x()+ self.btn_MoveRight.winfo_reqwidth()+ self.interval_x*4, y=self.btn_MoveUp.winfo_y())
         self.root.update()
-        self.btn_MoveZDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2')
+        self.btn_MoveZDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2', command= self.btn_MoveZDown_click)
         self.btn_MoveZDown.image= photo_down
         self.btn_MoveZDown.place(x= self.btn_MoveZUp.winfo_x(), y=self.btn_MoveDown.winfo_y())
         self.root.update()
-        #'''
-        #'''
+        
+        # ==================================================
+        # Seeding, Watering, Grab Image
+        # ==================================================
+        photo_seed= self.IconResize(self.saveParaPath+'img_Seed.png')
+        self.btn_Seed= Tkinter.Button(self.tab_control,image= photo_seed, cursor= 'hand2', command= self.btn_Seed_click)
+        self.btn_Seed.image= photo_seed
+        self.btn_Seed.place(x= self.btn_MoveUp.winfo_x()- int(self.btn_MoveUp.winfo_reqwidth()*1.5)- self.interval_x, y=self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_reqheight()+ self.interval_y*2)
+        self.root.update()
+        photo_water= self.IconResize(self.saveParaPath+'img_Water.png')
+        self.btn_Water= Tkinter.Button(self.tab_control,image= photo_water, cursor= 'hand2', command= self.btn_Water_click)
+        self.btn_Water.image= photo_water
+        self.btn_Water.place(x= self.btn_Seed.winfo_x()+ int(self.btn_Seed.winfo_reqwidth()*1.5)+ self.interval_x, y=self.btn_Seed.winfo_y())
+        self.root.update()
+        photo_cam= self.IconResize(self.saveParaPath+'img_Cam.png')
+        self.btn_CamGrab= Tkinter.Button(self.tab_control,image= photo_cam, cursor= 'hand2', command= self.btn_saveImg_click)
+        self.btn_CamGrab.image= photo_cam
+        self.btn_CamGrab.place(x= self.btn_Water.winfo_x()+ int(self.btn_Water.winfo_reqwidth()*1.5)+ self.interval_x, y=self.btn_Seed.winfo_y())
+        self.root.update()
 
+        # ==================================================
+        # Move To 
+        # ==================================================
         self.lbl_Xpos= Tkinter.Label(self.tab_control, text= 'X :',font= myfont12)
-        #self.lbl_Xpos.place(x= self.interval_x, y = self.rdbtn_MvAmount_1.winfo_y()+ self.rdbtn_MvAmount_1.winfo_height()+self.interval_y)
-        self.lbl_Xpos.place(x= self.interval_x, y = self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_height()+self.interval_y*3)
+        #self.lbl_Xpos.place(x= self.interval_x, y = self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_height()+self.interval_y*3)
+        self.lbl_Xpos.place(x= self.interval_x, y = self.btn_Seed.winfo_y()+ self.btn_Seed.winfo_height()+self.interval_y*3)
         self.root.update()
         self.entry_Xpos= Tkinter.Entry(self.tab_control, font= myfont12, width=4)
         self.entry_Xpos.insert(Tkinter.END, "0")
@@ -249,7 +287,9 @@ class App:
         self.btn_MoveTo.place(x= self.lbl_posUnit.winfo_x()+ self.lbl_posUnit.winfo_reqwidth()+ self.interval_x, y=self.lbl_Ypos.winfo_y())
         self.root.update()
 
-        #======[Scanning Control] ========
+        # ==================================================
+        # [Scanning Control] 
+        # ==================================================
         self.lbl_Scan= Tkinter.Label(self.tab_control, text="[ AUTO-SCAN ]", font= myfont14)
         self.lbl_Scan.place(x= self.interval_x, y= self.btn_MoveTo.winfo_y()+ self.btn_MoveTo.winfo_height()+self.interval_y)
         self.root.update()
@@ -305,7 +345,9 @@ class App:
         self.btn_StartScan= Tkinter.Button(self.tab_control, text= 'Start Scan', command= self.btn_StartScan_click,font= myfont12_Bold, fg= 'white', activeforeground='white', bg=self.bgGreen, activebackground=self.bgGreen_active, width= btn_width, height= btn_height)
         self.btn_StartScan.place(x= self.entry_ScanInterval_X.winfo_x()+ self.interval_x*6, y=self.lbl_ScanAmount.winfo_y()+self.interval_y*2)
         self.root.update()
-        # ===== Image Processing =======
+        # ==================================================
+        #  Image Processing 
+        # ==================================================
         self.btn_saveImg= Tkinter.Button(self.tab_imageprocess, text='Save Image', command= self.btn_saveImg_click,font= myfont14, width= btn_width, height= btn_height)
         self.btn_saveImg.place(x= self.interval_x, y= self.interval_y)
         self.root.update()
@@ -331,8 +373,9 @@ class App:
         self.root.update()
 
         
-        
-        # ===== Main Image Frame ======
+        # ==================================================
+        #  Main Image Frame 
+        # ==================================================
         self.frame_width, self.frame_height= int(0.5*(self.screen_width-Left_width- self.interval_x*2)), int(0.5*(self.screen_height-self.FileMenu.winfo_reqheight()- self.statuslabel.winfo_reqheight() -self.interval_y*2))
         print '*** Frame w,h: ',self.frame_width, self.frame_height 
         self.frame= np.zeros((int(self.frame_height), int(self.frame_width),3),np.uint8)
@@ -343,7 +386,9 @@ class App:
         self.panel.image = result
         self.panel.place(x=Left_width+self.interval_x, y= 0)
         self.root.update()
-        # ====== Display merge Image Frame =====
+        # ==================================================
+        #  Display merge Image Frame 
+        # ==================================================
         self.mergeframe_width, self.mergeframe_height= self.frame_width, self.frame_height*2+2
         self.mergeframe= np.zeros((int(self.mergeframe_height), int(self.mergeframe_width),3),np.uint8)
         #frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
@@ -354,7 +399,9 @@ class App:
         self.panel_mergeframe.image = result
         self.panel_mergeframe.place(x=self.panel.winfo_x()+ self.panel.winfo_reqwidth(), y= 0)
         self.root.update()
-        # ====== One Shot Image Frame ======
+        # ==================================================
+        #  One Shot Image Frame 
+        # ==================================================
         self.singleframe_width, self.singleframe_height= self.frame_width, self.frame_height
         self.singleframe= np.zeros((int(self.singleframe_height), int(self.singleframe_width),3),np.uint8)
         cv2.putText(self.singleframe, '1 shot Result',(10,20),cv2.FONT_HERSHEY_SIMPLEX, 0.5,(255,255,255),1)
@@ -364,15 +411,28 @@ class App:
         self.panel_singleframe.image = result
         self.panel_singleframe.place(x=self.panel.winfo_x(), y= self.panel.winfo_y()+ self.panel.winfo_height())
         self.root.update()
+       
+        # ==================================================
+        #  Camera & Arduino Connection
+        # ==================================================
+        self.ArdMntr= MonitorThread()
+        self.ArdMntr.start()
         
-        # ====== UI callback setting ======
+        self.CamMntr= CameraLink(self.CameraID)
+        #self.CamMntr.connect_camera()
+
+        # ==================================================
+        #  UI callback setting
+        # ==================================================
         self.panel.after(50, self.check_frame_update)
         self.lbl_CurrPos.after(5, self.UI_callback)
         self.statuslabel.after(5, self.check_status)
         self.panel_mergeframe.bind('<Button-1>',self.mouse_LeftClick)
         # ====== Override CLOSE function ==============
         self.root.protocol('WM_DELETE_WINDOW',self.on_exit)
-        # ====== Thread ========
+        # ==================================================
+        #   Thread
+        # ==================================================
         self.main_run_judge= True
         #self.thread_main= threading.Thread(target= self.main_run)
         self.thread_main= class_MyThread.Thread(self.main_run)
@@ -399,6 +459,8 @@ class App:
         tmp.append(self.limit)
         tmp.append(self.MaxSpeed)
         tmp.append(self.Acceleration)
+        tmp.append(self.CameraID)
+        tmp.append(self.Peripheral_para)
 
         self.config.write_json(self.ItemList, tmp)
         print "Para set"
@@ -536,6 +598,14 @@ class App:
         if cameraID.result is not None and cameraID.result != self.CamMntr.camera_id:
             print 'Switch Camera ID'
             self.CamMntr.connect_camera(cameraID.result)
+            self.CameraID= self.CamMntr.camera_id
+
+    def set_Peripheral(self):
+        #Var= PeripheralSetting(self.root, [('Fan',8),('Water Pump',9)])
+        #print '>>> ',self.Peripheral_para
+        Var= PeripheralSetting(self.root, self.Peripheral_para)
+        self.Peripheral_para= Var.result
+        print '*** Return Value: ',Var.result
 
     def set_Motor(self):
         if self.ArdMntr.connect:
@@ -596,7 +666,40 @@ class App:
         self.panel_mergeframe.image = result
 
     def rdbtn_click(self):
-        print 'rdVal',self.MvAmount.get() 
+        self.Move_interval= self.MvAmount.get()
+        print 'rdVal',self.Move_interval
+
+    def btn_MoveUp_click(self):
+        if self.ArdMntr.connect:
+            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+            self.ArdMntr.move_Coord(tmp_x+ self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
+    def btn_MoveDown_click(self):
+        if self.ArdMntr.connect:
+            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+            self.ArdMntr.move_Coord(tmp_x- self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
+    def btn_MoveLeft_click(self):
+        if self.ArdMntr.connect:
+            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+            self.ArdMntr.move_Coord(tmp_x, tmp_y+self.Move_interval*self.Move_intervalUnit, tmp_z)
+    def btn_MoveRight_click(self):
+        if self.ArdMntr.connect:
+            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+            self.ArdMntr.move_Coord(tmp_x, tmp_y- self.Move_interval*self.Move_intervalUnit, tmp_z)
+    def btn_MoveZUp_click(self):
+        if self.ArdMntr.connect:
+            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+            self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z+ self.Move_interval*self.Move_intervalUnit)
+    def btn_MoveZDown_click(self):
+        if self.ArdMntr.connect:
+            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+            self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z- self.Move_interval*self.Move_intervalUnit)
+    def btn_Seed_click(self):
+        if self.ArdMntr.connect:
+            print 'Seeding... '
+    def btn_Water_click(self):
+        if self.ArdMntr.connect:
+            print 'Watering... '
+    
 
     def btn_StartScan_click(self):
         self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
