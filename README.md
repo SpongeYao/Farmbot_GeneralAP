@@ -15,6 +15,14 @@ The Python code with a user interface is porvided with following functions:
 > * The communication between Camera and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Camera' button in menubar  
 > * The parameters on UI are saved automatically after the program is closed.   
 
+Move Control 
+-----------------------
+![GUI of gui_main.py](./Manual/gui_tabpage_Control.png)  
+<Hot Key>  
+move amount(100, 500, 1k, 10k, 100k):  F1~F5  
+Up, Down, Left, Right: ↑, ↓, ←, →  
+Z-Up, Z-Down: ctrl+↑, ctrl+↓  
+
 Motor Setting 
 -----------------------
 ![GUI of gui_main.py](./Manual/gui_MotorSetting.png)  
