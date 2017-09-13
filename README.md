@@ -5,16 +5,27 @@ The Python code with a user interface is porvided with following functions:
 2. auto scanning function by setting start point, scanning interval and scanning amount
 3. real-time image display 
 4. image processing function(otsu method is provided here)
-5. basic setting function(Max Speed & Acceleration)
+5. Motor Setting function (MAX speed, Acceleration)
+6. Camera Setting (Camera ID)
+7. Periperal Setting (PIN Number)
 
 ![GUI of gui_main.py](./Manual/gui_1.png)
 
 > * The communication between Arduino and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Arduino' button in menubar  
 > * The communication between Camera and computer is automatically built when the program is opened. If the connection is failed, it can be re-built again by clicking the 'Connect to Camera' button in menubar  
 > * The parameters on UI are saved automatically after the program is closed.   
+### Motor Setting  
+![GUI of gui_main.py](./Manual/gui_MotorSetting.png)  
+
+### Camera Setting  
+![GUI of gui_main.py](./Manual/gui_CamSetting.png)  
+
+### Peripheral Setting  
+![GUI of gui_main.py](./Manual/gui_Periperals.png)  
+
 
 ```command line: 
-python gui_main.py
+sudo python gui_main.py
 ```
 
 ### Arduino Code
@@ -103,11 +114,7 @@ sudo make -j4
 sudo make install
 sudo ldconfig
 ```
-
-<<<<<<< HEAD
-
-=======
->>>>>>> d4d36117472432bbc1e1ec0283f49946ded68e72
+   
 ### Python lib
 Tkinter  
 opencv  
