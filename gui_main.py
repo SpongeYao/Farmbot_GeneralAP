@@ -39,7 +39,7 @@ class App:
         bgGray_select= '#999'
         self.bgRed= '#aa0000'
         self.bgRed_active= '#ee0000'
-        self.Move_intervalUnit= 1000
+        self.Move_intervalUnit= 1
         '''
         self.root = Tkinter.Tk()
         self.root.title("[Arduino] Stepper Control")
@@ -75,6 +75,8 @@ class App:
         defaultValueList.append(0)
         self.ItemList.append("Periperal Setting")
         defaultValueList.append([('Fan',8),('Water Pump',9),('Vaccum Pump',10)])
+        self.ItemList.append("Move Amount type (5 types)")
+        defaultValueList.append([('100', 100),('500', 500),('1k',1000),('10k',10000), ('100k',100000)])
 
         self.config= ConfigSetting(self.saveParaPath, self.configName, defaultValueList)
         params= self.config.read_json(self.ItemList)
@@ -88,6 +90,7 @@ class App:
         self.Acceleration= params[self.ItemList[6]]
         self.CameraID= params[self.ItemList[7]]
         self.Peripheral_para= params[self.ItemList[8]]
+        self.rdbtnMvAmount_Mode= params[self.ItemList[9]]
 
         self.imageProcessor= class_ImageProcessing.contour_detect(self.savePath,self.saveParaPath)
         self.checkmouse_panel_mergeframe= False
@@ -176,7 +179,7 @@ class App:
         # ==================================================
         #  Move Amount Radio Button
         # ==================================================
-        self.rdbtnMvAmount_Mode= [('1k', 1),('5k', 5),('10k',10),('50k',50), ('100k',100)]
+        #self.rdbtnMvAmount_Mode= [('100', 100),('500', 500),('1k',1000),('10k',10000), ('100k',100000)]
 
         self.MvAmount= Tkinter.IntVar()
         self.rdbtn_MvAmount_1= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[0][0], value= self.rdbtnMvAmount_Mode[0][1],variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
@@ -195,7 +198,7 @@ class App:
         self.rdbtn_MvAmount_100.place(x= self.interval_x+ self.rdbtn_MvAmount_50.winfo_x()+ self.rdbtn_MvAmount_50.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
         self.root.update()
         self.rdbtn_MvAmount_10.select()
-        self.Move_interval= 10
+        self.Move_interval= self.rdbtnMvAmount_Mode[2][1]
         self.lbl_posUnit_1= Tkinter.Label(self.tab_control, text='(step)')
         self.lbl_posUnit_1.place(x= self.rdbtn_MvAmount_100.winfo_x()+ self.rdbtn_MvAmount_100.winfo_width(), y= self.rdbtn_MvAmount_1.winfo_y()+self.interval_y)
         self.root.update()
@@ -441,7 +444,7 @@ class App:
         #self.thread_scanning= threading.Thread(target= self.scanning_run)
         #self.thread_scanning= class_MyThread.Thread(self.scanning_run)
         #self.thread_scanning.start()
-        time.sleep(0.7)
+        time.sleep(1)
         if self.ArdMntr.connect: 
             self.ArdMntr.set_MaxSpeed(self.MaxSpeed[0],'x')
             self.ArdMntr.set_MaxSpeed(self.MaxSpeed[1],'y')
@@ -461,7 +464,7 @@ class App:
         tmp.append(self.Acceleration)
         tmp.append(self.CameraID)
         tmp.append(self.Peripheral_para)
-
+        tmp.append(self.rdbtnMvAmount_Mode)
         self.config.write_json(self.ItemList, tmp)
         print "Para set"
 
