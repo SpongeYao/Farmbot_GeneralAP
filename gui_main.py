@@ -8,22 +8,27 @@ import time
 import types
 #import Tkinter
 from Tkinter import *
+import tkFileDialog
 import ttk
 import tkMessageBox
 import tkFont
+import ScrolledText
+import Pmw
 from PIL import Image
 from PIL import ImageTk
 from os import listdir, path, makedirs, remove
+from datetime import datetime
 
 from class_ArduinoSerMntr import*
 from class_CameraMntr import*
 import class_MyThread
 import class_ImageProcessing
+#import gui_vars
 from class_ConfigSetting import ConfigSetting
 from dialog_PeripheralSetting import PeripheralSetting
 from dialog_MotorSetting import MotorSetting
 from dialog_CameraConnection import CameraConnection
-
+import utils_tool
 class App:
     # Ininitalization
     def __init__(self,root):
@@ -33,6 +38,7 @@ class App:
         myfont12 = tkFont.Font(family=strFont, size=12)#, weight= tkFont.BOLD)
         myfont12_Bold = tkFont.Font(family=strFont, size=12, weight= tkFont.BOLD)
         myfont10 = tkFont.Font(family=strFont, size=10)
+        myfont8 = tkFont.Font(family=strFont, size=8, weight= tkFont.BOLD)
         self.bgGreen= '#007700'
         self.bgGreen_active= '#00aa00'
         bgGray= '#333333333'
@@ -53,9 +59,10 @@ class App:
         self.savePath= 'Data/'
         self.saveParaPath= 'Data/Para/'
         self.configName= 'config.json'
+        if utils_tool.check_path(self.saveParaPath):
+            self.img = Tkinter.PhotoImage(file = self.saveParaPath+'Icon_2.png')
+            self.root.tk.call('wm', 'iconphoto', self.root._w, self.img)
 
-        self.img = Tkinter.PhotoImage(file = self.saveParaPath+'Icon_2.png')
-        self.root.tk.call('wm', 'iconphoto', self.root._w, self.img)
 	self.ItemList=[]
         defaultValueList=[]
 	self.ItemList.append("thrshd_gray")
@@ -78,7 +85,9 @@ class App:
         defaultValueList.append([('Fan',8),('Water Pump',9),('Vaccum Pump',10)])
         self.ItemList.append("Move Amount type (5 types)")
         defaultValueList.append([('100', 100),('500', 500),('1k',1000),('10k',10000), ('100k',100000)])
-
+        self.ItemList.append("script Path")
+        defaultValueList.append("Script/test.txt")
+        
         self.config= ConfigSetting(self.saveParaPath, self.configName, defaultValueList)
         params= self.config.read_json(self.ItemList)
         #print 'para: ',params
@@ -92,11 +101,13 @@ class App:
         self.CameraID= params[self.ItemList[7]]
         self.Peripheral_para= params[self.ItemList[8]]
         self.rdbtnMvAmount_Mode= params[self.ItemList[9]]
+        self.scriptPath= params[self.ItemList[10]]
 
         self.imageProcessor= class_ImageProcessing.contour_detect(self.savePath,self.saveParaPath)
         self.checkmouse_panel_mergeframe= False
         self.x1, self.y1, self.x2, self.y2= -1,-1,-1,-1        
         self.StartScan_judge= False
+        self.StartRunScript_judge= False
         self.saveScanning= 'XXX'
         self.strStatus= 'Idling...'
 
@@ -138,50 +149,55 @@ class App:
         self.statuslabel.config(text="IDLING ..................")
         self.statuslabel.pack(side = Tkinter.BOTTOM,fill=Tkinter.X)
         self.root.update()
+        # ==================================================
+        # [ROOT] Current position of motor
+        # ==================================================
+        '''
+        #self.lbl_CurrCoord= Tkinter.Label(self.root, text="[ Current Position ]", font= myfont14)
+        self.lbl_CurrCoord= Tkinter.Label(self.tab_control, text="[ Current Position ]", font= myfont14)
+        self.lbl_CurrCoord.place(x= self.interval_x, y= self.interval_y)
+        self.root.update()
+        self.lbl_CurrPos= Tkinter.Label(self.root, text="(X, Y, Z)= (-1, -1, -1)",font= myfont14)
+        self.lbl_CurrPos.place(x= self.interval_x, y= self.lbl_CurrCoord.winfo_y()+ self.lbl_CurrCoord.winfo_height())
+        self.root.update()
+        '''
+        self.lbl_CurrPos= Tkinter.Label(self.root, text="Location: (X, Y, Z)= (-1, -1, -1)",font= myfont14)
+        self.lbl_CurrPos.place(x= self.interval_x, y= self.interval_y)
+        self.root.update()
 
         # ====================
         # [Config] Tabpages
         # ====================
         #Left_width= self.lbl_MoveCoord.winfo_reqwidth()+ self.interval_x*11
         Left_width= int((self.screen_width-self.interval_x*2)*0.25)
-        Left_height= int((self.screen_height-self.FileMenu.winfo_reqheight()*1- self.statuslabel.winfo_reqheight()*1-self.interval_y*5))
+        Left_height= int((self.screen_height-self.FileMenu.winfo_reqheight()*1- self.statuslabel.winfo_reqheight()*1-self.interval_y*7- self.lbl_CurrPos.winfo_reqheight()))
         self.tabbox = ttk.Notebook(self.root, width=Left_width, height=Left_height)
         self.tab_control = Tkinter.Frame(self.root)
-	self.tab_pinsetting = Tkinter.Frame(self.root)
+	self.tab_loadscript = Tkinter.Frame(self.root)
 	self.tab_imageprocess = Tkinter.Frame(self.root)
 
 	self.tabbox.add(self.tab_control, text="CONTROL")
-	#self.tabbox.add(self.tab_pinsetting, text="PIN")
+	self.tabbox.add(self.tab_loadscript, text="LOAD SCRIPT")
 	self.tabbox.add(self.tab_imageprocess, text="IMAGE")
 
-	self.tabbox.place(x= 0, y= 0)
+	#self.tabbox.place(x= 0, y= 0)
+	self.tabbox.place(x= 0, y= self.lbl_CurrPos.winfo_y()+ self.lbl_CurrPos.winfo_reqheight()+ self.interval_y)
         self.root.update()
         print '*** Input Tab', Left_width, Left_height
         print '*** TAB',self.tabbox.winfo_reqwidth(), self.tabbox.winfo_reqheight()
 
         # ==================================================
-        # [Config] Current position of motor
-        # ==================================================
-        #self.lbl_CurrCoord= Tkinter.Label(self.root, text="[ Current Position ]", font= myfont14)
-        self.lbl_CurrCoord= Tkinter.Label(self.tab_control, text="[ Current Position ]", font= myfont14)
-        self.lbl_CurrCoord.place(x= self.interval_x, y= self.interval_y)
-        self.root.update()
-        self.lbl_CurrPos= Tkinter.Label(self.tab_control, text="(X, Y, Z)= (-1, -1, -1)",font= myfont12)
-        self.lbl_CurrPos.place(x= self.interval_x, y= self.lbl_CurrCoord.winfo_y()+ self.lbl_CurrCoord.winfo_height())
-        self.root.update()
-        # ==================================================
-        # [Step Motor Control] 
+        # [TAB CONTROL] Step Motor Control 
         # ==================================================
         self.lbl_MoveCoord= Tkinter.Label(self.tab_control, text="[ MOVE ]", font= myfont14)
         #self.lbl_MoveCoord.place(x= self.interval_x, y= self.lbl_CurrPos.winfo_y()+ self.lbl_CurrPos.winfo_height()+self.interval_y)
-        self.lbl_MoveCoord.place(x= self.interval_x, y= self.lbl_CurrPos.winfo_y()+ self.lbl_CurrPos.winfo_height()+self.interval_y)
+        self.lbl_MoveCoord.place(x= self.interval_x, y= self.interval_y)
         self.root.update()
 
         # ==================================================
-        #  Move Amount Radio Button
+        #  [TAB CONTROL] Move Amount Radio Button
         # ==================================================
         #self.rdbtnMvAmount_Mode= [('100', 100),('500', 500),('1k',1000),('10k',10000), ('100k',100000)]
-
         self.MvAmount= Tkinter.IntVar()
         self.rdbtn_MvAmount_1= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[0][0], value= self.rdbtnMvAmount_Mode[0][1],variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
         self.rdbtn_MvAmount_1.place(x= self.interval_x, y=self.lbl_MoveCoord.winfo_y()+ self.lbl_MoveCoord.winfo_reqheight()+ self.interval_y)
@@ -205,7 +221,7 @@ class App:
         self.root.update()
         
         # ==================================================
-        # Move 1 interval at specific Axis
+        # [TAB CONTROL] Move 1 interval at specific Axis
         # ==================================================
         photo_up= self.IconResize(self.saveParaPath+'img_Up.png')
         self.btn_MoveUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Up'))
@@ -239,7 +255,7 @@ class App:
         self.root.update()
         
         # ==================================================
-        # Seeding, Watering, Grab Image
+        # [TAB CONTROL] Seeding, Watering, Grab Image
         # ==================================================
         photo_seed= self.IconResize(self.saveParaPath+'img_Seed.png')
         self.btn_Seed= Tkinter.Button(self.tab_control,image= photo_seed, cursor= 'hand2', command= self.btn_Seed_click)
@@ -258,7 +274,7 @@ class App:
         self.root.update()
 
         # ==================================================
-        # Move To 
+        # [TAB CONTROL] Move To 
         # ==================================================
         self.lbl_Xpos= Tkinter.Label(self.tab_control, text= 'X :',font= myfont12)
         #self.lbl_Xpos.place(x= self.interval_x, y = self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_height()+self.interval_y*3)
@@ -293,7 +309,7 @@ class App:
         self.root.update()
 
         # ==================================================
-        # [Scanning Control] 
+        # [TAB CONTROL] Scanning Control 
         # ==================================================
         self.lbl_Scan= Tkinter.Label(self.tab_control, text="[ AUTO-SCAN ]", font= myfont14)
         self.lbl_Scan.place(x= self.interval_x, y= self.btn_MoveTo.winfo_y()+ self.btn_MoveTo.winfo_height()+self.interval_y)
@@ -343,15 +359,44 @@ class App:
         self.root.update()
         self.entry_ScanAmount_Y= Tkinter.Entry(self.tab_control, font= myfont12, width=6)
         self.entry_ScanAmount_Y.insert(Tkinter.END, '{0}'.format(self.scan_Y[2]))
-        self.entry_ScanAmount_Y.place(x= self.lbl_ScanAmount_comma.winfo_x()+self.lbl_ScanAmount_comma.winfo_width(), \
-                                      y= self.lbl_ScanAmount_comma.winfo_y())
+        self.entry_ScanAmount_Y.place(x= self.lbl_ScanAmount_comma.winfo_x()+self.lbl_ScanAmount_comma.winfo_width(), y= self.lbl_ScanAmount_comma.winfo_y())
         self.root.update()
 
         self.btn_StartScan= Tkinter.Button(self.tab_control, text= 'Start Scan', command= self.btn_StartScan_click,font= myfont12_Bold, fg= 'white', activeforeground='white', bg=self.bgGreen, activebackground=self.bgGreen_active, width= btn_width, height= btn_height)
         self.btn_StartScan.place(x= self.entry_ScanInterval_X.winfo_x()+ self.interval_x*6, y=self.lbl_ScanAmount.winfo_y()+self.interval_y*2)
         self.root.update()
+        
         # ==================================================
-        #  Image Processing 
+        # [TAB LOAD SCRIPT]  
+        # ==================================================
+        self.lbl_loadscript= Tkinter.Label(self.tab_loadscript, text="[ Load & Run Script ]", font= myfont14)
+        self.lbl_loadscript.place(x= self.interval_x, y= self.interval_y)
+        self.root.update()
+        
+        self.entry_scriptPath= Tkinter.Entry(self.tab_loadscript, font= myfont12, width=25)
+        self.entry_scriptPath.insert(Tkinter.END, self.scriptPath)
+        self.entry_scriptPath.place(x= self.lbl_loadscript.winfo_x(), y= self.lbl_loadscript.winfo_y()+ self.lbl_loadscript.winfo_reqheight()+ self.interval_y)
+        self.root.update()
+        self.btn_choosescript= Tkinter.Button(self.tab_loadscript, text='...', command= self.btn_choosescript_click, font= myfont8, width=0, height=0)
+        self.btn_choosescript.place(x= self.entry_scriptPath.winfo_x()+ self.entry_scriptPath.winfo_reqwidth()+ self.interval_x, y= self.entry_scriptPath.winfo_y())
+        self.root.update()
+        self.btn_loadscript= Tkinter.Button(self.tab_loadscript, text='Load', command= self.btn_loadscript_click, font= myfont12_Bold, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active)
+        self.btn_loadscript.place(x= self.entry_scriptPath.winfo_x(), y= self.entry_scriptPath.winfo_y()+ self.entry_scriptPath.winfo_reqheight()+ self.interval_y)
+        self.root.update()
+        self.btn_savescript= Tkinter.Button(self.tab_loadscript, text='Save', command= self.btn_savescript_click, font= myfont12_Bold, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active)
+        self.btn_savescript.place(x= self.btn_loadscript.winfo_x()+ self.btn_loadscript.winfo_reqwidth()+ self.interval_x*2, y= self.btn_loadscript.winfo_y())
+        self.root.update()
+        self.btn_runscript= Tkinter.Button(self.tab_loadscript, text='RUN', command= self.btn_runscript_click, font= myfont12_Bold, fg= 'white', activeforeground='white', bg= self.bgGreen, activebackground= self.bgGreen_active)
+        self.btn_runscript.place(x= self.btn_savescript.winfo_x()+ self.btn_savescript.winfo_reqwidth()+ self.interval_x*2, y= self.btn_savescript.winfo_y())
+        self.btn_runscript.focus_set()
+        self.root.update()
+        
+        #self.txtbox_script = ScrolledText.ScrolledText(self.tab_loadscript, width=40, height= 30 ,font = myfont10, bd = 2, relief = RIDGE, vscrollmode= 'dynamic')
+        self.txtbox_script = Pmw.ScrolledText(self.tab_loadscript, text_width=40, text_height= 20, hscrollmode= 'dynamic', vscrollmode= 'static', text_wrap= 'none', labelpos= 'n', label_text= "NaN")#, rowheader= 1)
+        self.txtbox_script.place(x= self.btn_loadscript.winfo_x(), y= self.btn_loadscript.winfo_y()+ self.btn_loadscript.winfo_reqheight()+ self.interval_y)
+
+        # ==================================================
+        # [TAB IMAGE] Image Processing 
         # ==================================================
         self.btn_saveImg= Tkinter.Button(self.tab_imageprocess, text='Save Image', command= self.btn_saveImg_click,font= myfont14, width= btn_width, height= btn_height)
         self.btn_saveImg.place(x= self.interval_x, y= self.interval_y)
@@ -376,10 +421,9 @@ class App:
 
         self.scale_threshold_size.place(x= self.scale_threshold_graylevel.winfo_x(), y= self.scale_threshold_graylevel.winfo_y()+ self.scale_threshold_graylevel.winfo_height())
         self.root.update()
-
         
         # ==================================================
-        #  Main Image Frame 
+        # [ROOT] Main Image Frame 
         # ==================================================
         self.frame_width, self.frame_height= int(0.5*(self.screen_width-Left_width- self.interval_x*2)), int(0.5*(self.screen_height-self.FileMenu.winfo_reqheight()- self.statuslabel.winfo_reqheight() -self.interval_y*2))
         print '*** Frame w,h: ',self.frame_width, self.frame_height 
@@ -392,7 +436,7 @@ class App:
         self.panel.place(x=Left_width+self.interval_x, y= 0)
         self.root.update()
         # ==================================================
-        #  Display merge Image Frame 
+        # [ROOT] Display merge Image Frame 
         # ==================================================
         self.mergeframe_width, self.mergeframe_height= self.frame_width, self.frame_height*2+2
         self.mergeframe= np.zeros((int(self.mergeframe_height), int(self.mergeframe_width),3),np.uint8)
@@ -405,7 +449,7 @@ class App:
         self.panel_mergeframe.place(x=self.panel.winfo_x()+ self.panel.winfo_reqwidth(), y= 0)
         self.root.update()
         # ==================================================
-        #  One Shot Image Frame 
+        # [ROOT] One Shot Image Frame 
         # ==================================================
         self.singleframe_width, self.singleframe_height= self.frame_width, self.frame_height
         self.singleframe= np.zeros((int(self.singleframe_height), int(self.singleframe_width),3),np.uint8)
@@ -486,6 +530,7 @@ class App:
         tmp.append(self.CameraID)
         tmp.append(self.Peripheral_para)
         tmp.append(self.rdbtnMvAmount_Mode)
+        tmp.append(self.scriptPath)
         self.config.write_json(self.ItemList, tmp)
         print "Para set"
 
@@ -512,7 +557,7 @@ class App:
 
     def UI_callback(self):
         if self.ArdMntr.connect== True:
-            tmp_text= '(X, Y, Z)= ('+self.ArdMntr.cmd_state.strCurX+', '+self.ArdMntr.cmd_state.strCurY+', '+self.ArdMntr.cmd_state.strCurZ+')'
+            tmp_text= 'Location: (X, Y, Z)= ('+self.ArdMntr.cmd_state.strCurX+', '+self.ArdMntr.cmd_state.strCurY+', '+self.ArdMntr.cmd_state.strCurZ+')'
         else:
             tmp_text='Arduino Connection Refuesed!'
 
@@ -555,12 +600,22 @@ class App:
         self.statuslabel.config(text= self.strStatus)
         self.statuslabel.after(10,self.check_status)
 
-    def Lock_UI(self, arg_Lock):
+    def Lock_Menubar(self, arg_Lock):
         if arg_Lock:
             self.menubar.entryconfig('File', state='disabled')
             self.menubar.entryconfig('Setting', state='disabled')
             self.menubar.entryconfig('Communication', state='disabled')
             self.menubar.entryconfig('Image Processing', state='disabled')
+            self.checkmouse_panel_mergeframe= False
+        else:
+            self.menubar.entryconfig('File', state='normal')
+            self.menubar.entryconfig('Setting', state='normal')
+            self.menubar.entryconfig('Communication', state='normal')
+            self.menubar.entryconfig('Image Processing', state='normal')
+            self.checkmouse_panel_mergeframe= True
+
+    def Lock_tabcontrol(self, arg_Lock):
+        if arg_Lock:
             self.btn_MoveTo.config(state= 'disabled')
             self.entry_Xpos.config(state= 'disabled')
             self.entry_Ypos.config(state= 'disabled')
@@ -574,11 +629,16 @@ class App:
             self.entry_ScanAmount_X.config(state= 'disabled')
             self.entry_ScanAmount_Y.config(state= 'disabled')
             self.checkmouse_panel_mergeframe= False
+            self.btn_MoveUp.config(state= 'disabled')
+            self.btn_MoveDown.config(state= 'disabled')
+            self.btn_MoveLeft.config(state= 'disabled')
+            self.btn_MoveRight.config(state= 'disabled')
+            self.btn_MoveZUp.config(state= 'disabled')
+            self.btn_MoveZDown.config(state= 'disabled')
+            self.btn_Water.config(state= 'disabled') 
+            self.btn_Seed.config(state= 'disabled') 
+            self.btn_CamGrab.config(state= 'disabled') 
         else:
-            self.menubar.entryconfig('File', state='normal')
-            self.menubar.entryconfig('Setting', state='normal')
-            self.menubar.entryconfig('Communication', state='normal')
-            self.menubar.entryconfig('Image Processing', state='normal')
             self.btn_MoveTo.config(state= 'normal')
             self.entry_Xpos.config(state= 'normal')
             self.entry_Ypos.config(state= 'normal')
@@ -592,6 +652,29 @@ class App:
             self.entry_ScanAmount_X.config(state= 'normal')
             self.entry_ScanAmount_Y.config(state= 'normal')
             self.checkmouse_panel_mergeframe= True
+            self.btn_MoveUp.config(state= 'normal')
+            self.btn_MoveDown.config(state= 'normal')
+            self.btn_MoveLeft.config(state= 'normal')
+            self.btn_MoveRight.config(state= 'normal')
+            self.btn_MoveZUp.config(state= 'normal')
+            self.btn_MoveZDown.config(state= 'normal')
+            self.btn_Water.config(state= 'normal') 
+            self.btn_Seed.config(state= 'normal') 
+            self.btn_CamGrab.config(state= 'normal') 
+
+    def Lock_tabloadscript(self, arg_Lock):
+        if arg_Lock:
+            self.entry_scriptPath.config(state= 'disabled')
+            self.btn_loadscript.config(state= 'disabled')
+            self.btn_choosescript.config(state= 'disabled')
+            self.btn_savescript.config(state= 'disabled')
+            self.txtbox_script.configure(text_state= 'disabled')
+        else:
+            self.entry_scriptPath.config(state= 'normal')
+            self.btn_loadscript.config(state= 'normal')
+            self.btn_choosescript.config(state= 'normal')
+            self.btn_savescript.config(state= 'normal')
+            self.txtbox_script.configure(text_state= 'normal')
 
     def plastic_set_background(self):
         frame= self.CamMntr.get_frame()
@@ -706,62 +789,40 @@ class App:
         print 'rdVal',self.Move_interval
 
     def btn_MoveAmount_click(self, event= None):
-        if type(event) is types.StringType:
-            move_type= event 
-        else:
-            print'event.keysym ', event.keysym
-            print 'event.keycode', event.keycode
-            move_type= event.keysym
-            print 'Test ',move_type is 'Up'
+        #print '*** ',self.tabbox.index(self.tabbox.select())
+        #print '*** ',self.tabbox.select()
+        if self.tabbox.index(self.tabbox.select())==0:
+            if type(event) is types.StringType:
+                move_type= event 
+            else:
+                print'event.keysym ', event.keysym
+                print 'event.keycode', event.keycode
+                move_type= event.keysym
+                print 'Test ',move_type is 'Up'
 
-        tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
-        if move_type == 'Up':
-            self.ArdMntr.move_Coord(tmp_x+ self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
-        elif move_type == 'Down':
-            self.ArdMntr.move_Coord(tmp_x- self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
-        elif move_type == 'Left':
-            self.ArdMntr.move_Coord(tmp_x, tmp_y-self.Move_interval*self.Move_intervalUnit, tmp_z)
-        elif move_type == 'Right':
-            self.ArdMntr.move_Coord(tmp_x, tmp_y+self.Move_interval*self.Move_intervalUnit, tmp_z)
+            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+            if move_type == 'Up':
+                self.ArdMntr.move_Coord(tmp_x+ self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
+            elif move_type == 'Down':
+                self.ArdMntr.move_Coord(tmp_x- self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
+            elif move_type == 'Left':
+                self.ArdMntr.move_Coord(tmp_x, tmp_y-self.Move_interval*self.Move_intervalUnit, tmp_z)
+            elif move_type == 'Right':
+                self.ArdMntr.move_Coord(tmp_x, tmp_y+self.Move_interval*self.Move_intervalUnit, tmp_z)
 
     def btn_MoveAmountZaxis_click(self, event= None):
-        if type(event) is types.StringType:
-            move_type= event 
-        else:
-            move_type= event.keysym
-        
-        tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
-        if move_type == 'Up':
-            self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z+ self.Move_interval*self.Move_intervalUnit)
-        elif move_type == 'Down':
-            self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z- self.Move_interval*self.Move_intervalUnit)
+        if self.tabbox.index(self.tabbox.select())==0:
+            if type(event) is types.StringType:
+                move_type= event 
+            else:
+                move_type= event.keysym
+            
+            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+            if move_type == 'Up':
+                self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z+ self.Move_interval*self.Move_intervalUnit)
+            elif move_type == 'Down':
+                self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z- self.Move_interval*self.Move_intervalUnit)
 
-    '''
-    def btn_MoveUp_click(self):
-        if self.ArdMntr.connect:
-            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
-            self.ArdMntr.move_Coord(tmp_x+ self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
-    def btn_MoveDown_click(self):
-        if self.ArdMntr.connect:
-            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
-            self.ArdMntr.move_Coord(tmp_x- self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
-    def btn_MoveLeft_click(self):
-        if self.ArdMntr.connect:
-            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
-            self.ArdMntr.move_Coord(tmp_x, tmp_y+self.Move_interval*self.Move_intervalUnit, tmp_z)
-    def btn_MoveRight_click(self):
-        if self.ArdMntr.connect:
-            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
-            self.ArdMntr.move_Coord(tmp_x, tmp_y- self.Move_interval*self.Move_intervalUnit, tmp_z)
-    def btn_MoveZUp_click(self, event=None):
-        if self.ArdMntr.connect:
-            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
-            self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z+ self.Move_interval*self.Move_intervalUnit)
-    def btn_MoveZDown_click(self, event=None):
-        if self.ArdMntr.connect:
-            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
-            self.ArdMntr.move_Coord(tmp_x, tmp_y, tmp_z- self.Move_interval*self.Move_intervalUnit)
-    '''
     def btn_Seed_click(self):
         if self.ArdMntr.connect:
             print 'Seeding... '
@@ -769,6 +830,78 @@ class App:
         if self.ArdMntr.connect:
             print 'Watering... '
     
+    def btn_choosescript_click(self):
+        str_scriptPath = tkFileDialog.askopenfilename(title = "Select file",filetypes = (("all files","*.*"),("Text File", "*.txt"),("jpeg files","*.jpg")))
+        print '>>>> ', str_scriptPath
+        if str_scriptPath !="":
+            self.entry_scriptPath.delete(0,"end")
+            self.entry_scriptPath.insert(Tkinter.END, str_scriptPath)
+            self.scriptPath= str_scriptPath
+
+    def btn_loadscript_click(self):
+        #self.scriptPath= self.entry_scriptPath.get()
+        tmpPath= self.entry_scriptPath.get()
+        if utils_tool.check_file(tmpPath):
+            #self.txtbox_script.delete('1.0', END)
+            self.txtbox_script.clear()
+            self.txtbox_script.importfile(tmpPath)
+            self.txtbox_script.configure(label_text= "- "+ tmpPath.split("/")[-1]+" -")
+        else:
+            tkMessageBox.showerror("Error", "'%s' dost not exist !" % tmpPath)
+        '''
+        cmd_file = open(self.scriptPath, "r")
+        lines = cmd_file.readlines()
+        for line in lines:
+            cmd = line.strip()
+            if len(cmd)>0:
+                self.txtbox_script.insert(END, cmd+'\n')
+        cmd_file.close()
+        '''
+        
+    def btn_savescript_click(self):
+        tmpPath= self.entry_scriptPath.get()
+        self.txtbox_script.exportfile(tmpPath)
+
+    
+
+    def btn_runscript_click(self):
+        if self.ArdMntr.connect:
+            if self.StartRunScript_judge:
+                #===================================
+                # Delete Scanning Thread
+                #===================================
+                self.StartScan_judge= False
+                del(self.thread_runningScript)
+                '''
+                self.tabbox.tab(self.tab_control, state='normal')
+                self.tabbox.tab(self.tab_imageprocess, state='normal')
+                self.Lock_tabloadscript(False)
+                self.btn_runscript.config(text= 'RUN', fg='white', activeforeground= 'white', bg= self.bgGreen,activebackground= self.bgGreen_active)
+                self.StartRunScript_judge= False
+                '''
+            else:
+                '''
+                content= self.txtbox_script.get("1.0", "end-1c")
+                test= self.txtbox_script.getvalue()
+                print 'type test:', type(test)
+                with open('tmp.txt', "w") as out:
+                    out.write(content)
+                '''
+                self.txtbox_script.exportfile("tmp.txt")
+                #=================================
+                # New Thread of Scanning process
+                #================================
+                self.thread_runningScript= threading.Thread(target= self.runningScript_run)
+                self.thread_runningScript.start()
+
+                self.tabbox.tab(self.tab_control, state='disable')
+                self.tabbox.tab(self.tab_imageprocess, state='disable')
+                self.Lock_tabloadscript(True)
+                self.btn_runscript.config(text= 'STOP', fg='white', activeforeground= 'white', bg= self.bgRed,activebackground= self.bgRed_active)
+                self.StartRunScript_judge= True
+        else:
+            tkMessageBox.showerror("Error", "Arduino connection refused!")
+
 
     def btn_StartScan_click(self):
         self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
@@ -781,8 +914,13 @@ class App:
             #===================================
             self.StartScan_judge= False
             del(self.thread_scanning)
-            self.Lock_UI(True)
+            '''
+            self.Lock_tabcontrol(False)
+            self.Lock_Menubar(False)
+            self.tabbox.tab(self.tab_loadscript, state='normal')
+            self.tabbox.tab(self.tab_imageprocess, state='normal')
             self.btn_StartScan.config(text= 'Start Scan', fg='white', activeforeground= 'white', bg= self.bgGreen,activebackground= self.bgGreen_active)
+            '''
         else:
             if self.ArdMntr.connect:
                 try:
@@ -796,13 +934,18 @@ class App:
                     self.ArdMntr.move_Coord(self.scan_X[0], self.scan_Y[0], self.input_Zpos)
                     if self.scan_X[0]+self.scan_X[1]*self.scan_X[2]<self.limit[0] | self.scan_Y[0]+self.scan_Y[1]*self.scan_Y[2]<self.limit[1]:
                         self.StartScan_judge= True
+                        #self.ScanTimeIndex= datetime.now().strftime("%Y%m%d%H%M%S")
+                        self.ScanTimeIndex= datetime.now().strftime('%Y%m%d%H%M%S')
                         #=================================
                         # New Thread of Scanning process
                         #================================
                         self.thread_scanning= threading.Thread(target= self.scanning_run)
                         self.thread_scanning.start()
                         print '*** scanning...'
-                    	self.Lock_UI(True)
+                    	self.Lock_tabcontrol(True)
+                        self.Lock_Menubar(True)
+                        self.tabbox.tab(self.tab_loadscript, state='disable')
+                        self.tabbox.tab(self.tab_imageprocess, state='disable')
                     	self.btn_StartScan.config(text= 'STOP Scan', fg='white', activeforeground= 'white', bg= self.bgRed, activebackground= self.bgRed_active)
                     else:
                         tkMessageBox.showerror("Error", "The scanning of X should be in [0~{0}]\nThe range of Y should be in [0~{1}]".format(self.limit[0],self.limit[1]))
@@ -814,7 +957,6 @@ class App:
 
     def btn_saveImg_click(self):
         #self.saveImg= True
-        #self.Lock_UI(False)
         self.imagename= 'Frame1'
         self.singleframe = self.CamMntr.get_frame()
         self.saveImg_function(self.singleframe, self.savePath, self.imagename)
@@ -850,12 +992,44 @@ class App:
         return frame
 
     def saveImg_function(self, arg_frame,arg_savePath, arg_filename):
+        utils_tool.check_path(arg_savePath)
         # make sure output dir exists
-        if(not path.isdir(arg_savePath)):
-            makedirs(arg_savePath)
+        #if(not path.isdir(arg_savePath)):
+        #    makedirs(arg_savePath)
         #tmp= cv2.cvtColor(arg_frame, cv2.COLOR_RGB2BGR)
         cv2.imwrite(arg_savePath+arg_filename+'.jpg',arg_frame)
     
+    def runningScript_run(self):
+        cmd_file = open('tmp.txt', "r")
+        lines = cmd_file.readlines()
+        for line in lines:
+            cols = line.split("#")
+            print '***', self.StartRunScript_judge,line
+            print("line=%s,cols_count=%i" %(line,len(cols)))
+            if len(cols)>=1:
+                cmd = cols[0]
+                cmd = cmd.strip()
+                if len(cmd)>0:
+                    print(">> "+cmd)
+                    while 1:
+                        if self.ArdMntr.cmd_state.is_ready(): #wait system ready to accept commands
+                            self.ArdMntr.serial_send("%s" %cmd)
+                            time.sleep(1)
+                            break
+                        else:
+                            time.sleep(1)
+            time.sleep(1)
+            if self.StartRunScript_judge== False:
+                break
+        cmd_file.close()
+        print 'CLOSE FILE...'
+        self.tabbox.tab(self.tab_control, state='normal')
+        self.tabbox.tab(self.tab_imageprocess, state='normal')
+        self.Lock_tabloadscript(False)
+        self.btn_runscript.config(text= 'RUN', fg='white', activeforeground= 'white', bg= self.bgGreen,activebackground= self.bgGreen_active)
+        self.StartRunScript_judge= False
+
+
     def scanning_run(self):
         step=0
         #while self.scanning_judge:
@@ -882,7 +1056,7 @@ class App:
                             #self.saveScanning= self.ArdMntr.cmd_state.strCurX+'_'+self.ArdMntr.cmd_state.strCurY
                             self.saveScanning= '{0}_{1}'.format(tmp_X, tmp_Y)
                             frame= self.CamMntr.get_frame()
-                            self.saveImg_function(frame, self.savePath+'Scanning/','Raw_'+self.saveScanning)
+                            self.saveImg_function(frame, self.savePath+'Scanning/',self.ScanTimeIndex+'_'+self.saveScanning)
                             #result= self.imageProcessor.get_contour(frame, True, self.savePath+'Scanning/', 'Detect_'+self.saveScanning,1)
                             result= frame.copy()
                             self.display_panel_singleframe(result)
@@ -899,7 +1073,10 @@ class App:
                         break
                     step= step+1
             self.StartScan_judge= False
-            self.Lock_UI(False)
+            self.Lock_tabcontrol(False)
+            self.Lock_Menubar(False)
+            self.tabbox.tab(self.tab_loadscript, state='normal')
+            self.tabbox.tab(self.tab_imageprocess, state='normal')
             self.btn_StartScan.config(text= 'Start Scan', fg='white', activeforeground='white', bg= self.bgGreen, activebackground= self.bgGreen_active)
         else:
             time.sleep(0.2)
