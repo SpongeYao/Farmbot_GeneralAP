@@ -4,10 +4,11 @@ The Python code with a user interface is porvided with following functions:
 1. 3-axis stepper-motor control
 2. auto scanning function by setting start point, scanning interval and scanning amount
 3. real-time image display 
-4. image processing function(otsu method is provided here)
-5. Motor Setting function (MAX speed, Acceleration)
-6. Camera Setting (Camera ID)
-7. Periperal Setting (PIN Number)
+4. Load & Run script function
+5. image processing function(otsu method is provided here)
+6. Motor Setting function (MAX speed, Acceleration)
+7. Camera Setting (Camera ID)
+8. Periperal Setting (PIN Number)
 
 ![GUI of gui_main.py](./Manual/gui_1.png)
 
@@ -22,6 +23,10 @@ Move Control
 move amount(100, 500, 1k, 10k, 100k):  F1~F5  
 Up, Down, Left, Right: ↑, ↓, ←, →  
 Z-Up, Z-Down: ctrl+↑, ctrl+↓  
+  
+Load & Run Script
+-----------------------
+![GUI of gui_tabpage_Loadscript.py](./Manual/gui_tabpage_Loadscript.png)  
 
 Motor Setting 
 -----------------------
@@ -33,7 +38,8 @@ Camera Setting
 
 Peripheral Setting
 -----------------------
-![GUI of gui_main.py](./Manual/gui_Periperals.png)  
+![GUI of gui_main.py](./Manual/gui_Peripherals.png)  
+
 
 
 ```command line: 
