@@ -1119,7 +1119,7 @@ class App:
         time.sleep(0.01)
 
 root = Tkinter.Tk()
-root.title("[Arduino] Stepper Control")
+root.title("[FBTUG] offline Farmbot GUI for development")
 root.attributes('-zoomed', True) # FullScreen
 app= App(root)
 root.mainloop()

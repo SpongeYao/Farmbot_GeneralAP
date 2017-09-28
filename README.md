@@ -8,7 +8,7 @@ The Python code with a user interface is porvided with following functions:
 5. image processing function(otsu method is provided here)
 6. Motor Setting function (MAX speed, Acceleration)
 7. Camera Setting (Camera ID)
-8. Periperal Setting (PIN Number)
+8. Peripheral Setting (PIN Number)
 
 ![GUI of gui_main.py](./Manual/gui_1.png)
 
