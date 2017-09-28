@@ -137,7 +137,7 @@ class App:
         self.menubar.add_cascade(label="Communication", underline= 0, menu=self.ConnectMenu)
         self.ImgProcess= Tkinter.Menu(self.menubar, tearoff=0)
         self.ImgProcess.add_command(label="Set Background", command= self.plastic_set_background)
-        self.ImgProcess.add_command(label='Otsu Binary', command= self.methond_OtsuBinary)
+        self.ImgProcess.add_command(label='Otsu Binary', command= self.method_OtsuBinary)
         self.menubar.add_cascade(label="Image Processing", underline=0, menu= self.ImgProcess)
         self.root.config(menu= self.menubar)
         self.root.update()
@@ -406,7 +406,7 @@ class App:
         self.lbl_scracth_detect.place(x= self.interval_x, y= self.btn_saveImg.winfo_y()+ self.btn_saveImg.winfo_reqheight()+ self.interval_y)
         self.root.update()
         
-        self.btn_detect= Tkinter.Button(self.tab_imageprocess, text='Binarization', command= self.methond_SimpleBinary,font= myfont12_Bold, width= btn_width, height= btn_height, fg= 'white',activeforeground='white', bg= bgGray,activebackground= bgGray_active)
+        self.btn_detect= Tkinter.Button(self.tab_imageprocess, text='Binarization', command= self.method_SimpleBinary,font= myfont12_Bold, width= btn_width, height= btn_height, fg= 'white',activeforeground='white', bg= bgGray,activebackground= bgGray_active)
         self.btn_detect.place(x= self.lbl_scracth_detect.winfo_x()+ self.lbl_scracth_detect.winfo_reqwidth()+ self.interval_x, y= self.lbl_scracth_detect.winfo_y())
         self.root.update()
         
@@ -680,7 +680,7 @@ class App:
         frame= self.CamMntr.get_frame()
         self.imageProcessor.set_background(frame)
 
-    def methond_OtsuBinary(self):
+    def method_OtsuBinary(self):
         print 'Start Otsu Binary.... '
         #result= self.CamMntr.subract_test()
         self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
@@ -688,7 +688,7 @@ class App:
         result= self.imageProcessor.get_contour(self.singleframe, True, self.savePath, 'Otsu_Binary_'+self.imagename, 1)
         self.display_panel_singleframe(result)
 
-    def methond_SimpleBinary(self):
+    def method_SimpleBinary(self):
         print 'Start Binarization with ... '
         #result= self.CamMntr.subract_test()
         self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))

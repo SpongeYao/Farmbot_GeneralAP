@@ -56,7 +56,7 @@ class contour_detect():
             thresholdedImg = cv2.adaptiveThreshold(blur.copy(),255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,5,0)
 
         result = cv2.cvtColor(thresholdedImg, cv2.COLOR_GRAY2RGB)
-        ctrs, hier = cv2.findContours(thresholdedImg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        ctrs, hier = cv2.findContours(thresholdedImg, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         ctrs = filter(lambda x : cv2.contourArea(x) > self.threshold_size , ctrs)
 
