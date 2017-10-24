@@ -23,8 +23,9 @@ from class_ArduinoSerMntr import*
 from class_CameraMntr import*
 import class_MyThread
 import class_ImageProcessing
-#import gui_vars
+import gui_vars
 from class_ConfigSetting import ConfigSetting
+#from class_ConfigSetting_new import ConfigSetting
 from dialog_PeripheralSetting import PeripheralSetting
 from dialog_MotorSetting import MotorSetting
 from dialog_CameraConnection import CameraConnection
@@ -56,54 +57,38 @@ class App:
         # =================================
         # Parameters
         # =================================
-        self.savePath= 'Data/'
-        self.saveParaPath= 'Data/Para/'
-        self.configName= 'config.json'
-        if utils_tool.check_path(self.saveParaPath):
-            self.img = Tkinter.PhotoImage(file = self.saveParaPath+'Icon_2.png')
+        gui_vars.savePath= 'Data/'
+        gui_vars.saveParaPath= 'Data/Para/'
+        gui_vars.configName= 'config.json'
+        if utils_tool.check_path(gui_vars.saveParaPath):
+            self.img = Tkinter.PhotoImage(file = gui_vars.saveParaPath+'Icon_2.png')
             self.root.tk.call('wm', 'iconphoto', self.root._w, self.img)
-
-	self.ItemList=[]
-        defaultValueList=[]
-	self.ItemList.append("thrshd_gray")
-	defaultValueList.append(128)
-	self.ItemList.append("thrshd_size")
-	defaultValueList.append(20)
-	self.ItemList.append("Scan_X (Beg,Interval,Amount)")
-	defaultValueList.append([0,500,4])
-	self.ItemList.append("Scan_Y (Beg,Interval,Amount)")
-	defaultValueList.append([0,500,4])
-	self.ItemList.append("limit Maximum (X,Y)")
-	defaultValueList.append([8000,95000])
-        self.ItemList.append("Max Speed (X, Y)")
-	defaultValueList.append([400,400,400])
-        self.ItemList.append("Ac/Deceleration (X, Y)")
-	defaultValueList.append([100,100,100])
-        self.ItemList.append("Camera ID")
-        defaultValueList.append(0)
-        self.ItemList.append("Periperal Setting")
-        defaultValueList.append([('Fan',8),('Water Pump',9),('Vaccum Pump',10)])
-        self.ItemList.append("Move Amount type (5 types)")
-        defaultValueList.append([('100', 100),('500', 500),('1k',1000),('10k',10000), ('100k',100000)])
-        self.ItemList.append("script Path")
-        defaultValueList.append("Script/test.txt")
-        
-        self.config= ConfigSetting(self.saveParaPath, self.configName, defaultValueList)
-        params= self.config.read_json(self.ItemList)
+        self.config= ConfigSetting(gui_vars.saveParaPath, gui_vars.configName, gui_vars.defaultDict)
+        params= self.config.read_json()
         #print 'para: ',params
-        self.threshold_graylevel= params[self.ItemList[0]]
-        self.threshold_size= params[self.ItemList[1]] 
-        self.scan_X= params[self.ItemList[2]]
-        self.scan_Y= params[self.ItemList[3]]
-        self.limit= params[self.ItemList[4]]
-        self.MaxSpeed= params[self.ItemList[5]]
-        self.Acceleration= params[self.ItemList[6]]
-        self.CameraID= params[self.ItemList[7]]
-        self.Peripheral_para= params[self.ItemList[8]]
-        self.rdbtnMvAmount_Mode= params[self.ItemList[9]]
-        self.scriptPath= params[self.ItemList[10]]
+        self.threshold_graylevel= params['thrshd_gray']
+        self.threshold_size= params['thrshd_size'] 
+        self.scan_X= params['Scan_X (Beg,Interval,Amount)']
+        self.scan_Y= params['Scan_Y (Beg,Interval,Amount)']
+        self.limit= params['limit Maximum (X,Y)']
+        self.MaxSpeed= params['Max Speed (X, Y)']
+        self.Acceleration= params['Ac/Deceleration (X, Y)']
+        self.CameraID= params['Camera ID']
+        self.Peripheral_para= params['Peripheral Setting']
+        self.rdbtnMvAmount_Mode= params['Move Amount type (5 types)']
+        self.scriptPath= params['script Path']
+        self.pinNumb_fan= 8
+        self.pinNumb_water= 9
+        self.pinNumb_seed= 10
+        for key, value in params['Peripheral Setting']:
+            if key.strip().replace(' ','').lower() is 'waterpump':
+                self.pinNumb_water= value
+            if key.strip().replace(' ','').lower() is 'vaccumpump':
+                self.pinNumb_seed= value
+            if key.strip().replace(' ','').lower() is 'fan':
+                self.pinNumb_fan= value
 
-        self.imageProcessor= class_ImageProcessing.contour_detect(self.savePath,self.saveParaPath)
+        self.imageProcessor= class_ImageProcessing.contour_detect(gui_vars.savePath,gui_vars.saveParaPath)
         self.checkmouse_panel_mergeframe= False
         self.x1, self.y1, self.x2, self.y2= -1,-1,-1,-1        
         self.StartScan_judge= False
@@ -152,15 +137,6 @@ class App:
         # ==================================================
         # [ROOT] Current position of motor
         # ==================================================
-        '''
-        #self.lbl_CurrCoord= Tkinter.Label(self.root, text="[ Current Position ]", font= myfont14)
-        self.lbl_CurrCoord= Tkinter.Label(self.tab_control, text="[ Current Position ]", font= myfont14)
-        self.lbl_CurrCoord.place(x= self.interval_x, y= self.interval_y)
-        self.root.update()
-        self.lbl_CurrPos= Tkinter.Label(self.root, text="(X, Y, Z)= (-1, -1, -1)",font= myfont14)
-        self.lbl_CurrPos.place(x= self.interval_x, y= self.lbl_CurrCoord.winfo_y()+ self.lbl_CurrCoord.winfo_height())
-        self.root.update()
-        '''
         self.lbl_CurrPos= Tkinter.Label(self.root, text="Location: (X, Y, Z)= (-1, -1, -1)",font= myfont14)
         self.lbl_CurrPos.place(x= self.interval_x, y= self.interval_y)
         self.root.update()
@@ -223,22 +199,22 @@ class App:
         # ==================================================
         # [TAB CONTROL] Move 1 interval at specific Axis
         # ==================================================
-        photo_up= self.IconResize(self.saveParaPath+'img_Up.png')
+        photo_up= self.IconResize(gui_vars.saveParaPath+'img_Up.png')
         self.btn_MoveUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Up'))
         self.btn_MoveUp.image= photo_up
         self.btn_MoveUp.place(x= self.rdbtn_MvAmount_10.winfo_x()+int(self.rdbtn_MvAmount_10.winfo_reqwidth()*0), y=self.rdbtn_MvAmount_1.winfo_y()+ self.rdbtn_MvAmount_1.winfo_reqheight()+ self.interval_y)
         self.root.update()
-        photo_down= self.IconResize(self.saveParaPath+'img_Down.png')
+        photo_down= self.IconResize(gui_vars.saveParaPath+'img_Down.png')
         self.btn_MoveDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Down'))
         self.btn_MoveDown.image= photo_down
         self.btn_MoveDown.place(x= self.btn_MoveUp.winfo_x(), y=self.btn_MoveUp.winfo_y()+ self.btn_MoveUp.winfo_reqheight()+ self.interval_y)
         self.root.update()
-        photo_left= self.IconResize(self.saveParaPath+'img_Left.png')
+        photo_left= self.IconResize(gui_vars.saveParaPath+'img_Left.png')
         self.btn_MoveLeft= Tkinter.Button(self.tab_control,image= photo_left, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Left'))
         self.btn_MoveLeft.image= photo_left
         self.btn_MoveLeft.place(x= self.btn_MoveDown.winfo_x()- self.btn_MoveDown.winfo_width()- self.interval_x, y=self.btn_MoveDown.winfo_y())
         self.root.update()
-        photo_right= self.IconResize(self.saveParaPath+'img_Right.png')
+        photo_right= self.IconResize(gui_vars.saveParaPath+'img_Right.png')
         self.btn_MoveRight= Tkinter.Button(self.tab_control,image= photo_right, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Right'))
         self.btn_MoveRight.image= photo_right
         self.btn_MoveRight.place(x= self.btn_MoveDown.winfo_x()+ self.btn_MoveDown.winfo_width()+ self.interval_x, y=self.btn_MoveDown.winfo_y())
@@ -257,17 +233,17 @@ class App:
         # ==================================================
         # [TAB CONTROL] Seeding, Watering, Grab Image
         # ==================================================
-        photo_seed= self.IconResize(self.saveParaPath+'img_Seed.png')
+        photo_seed= self.IconResize(gui_vars.saveParaPath+'img_Seed.png')
         self.btn_Seed= Tkinter.Button(self.tab_control,image= photo_seed, cursor= 'hand2', command= self.btn_Seed_click)
         self.btn_Seed.image= photo_seed
         self.btn_Seed.place(x= self.btn_MoveUp.winfo_x()- int(self.btn_MoveUp.winfo_reqwidth()*1.5)- self.interval_x, y=self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_reqheight()+ self.interval_y*2)
         self.root.update()
-        photo_water= self.IconResize(self.saveParaPath+'img_Water.png')
+        photo_water= self.IconResize(gui_vars.saveParaPath+'img_Water.png')
         self.btn_Water= Tkinter.Button(self.tab_control,image= photo_water, cursor= 'hand2', command= self.btn_Water_click)
         self.btn_Water.image= photo_water
         self.btn_Water.place(x= self.btn_Seed.winfo_x()+ int(self.btn_Seed.winfo_reqwidth()*1.5)+ self.interval_x, y=self.btn_Seed.winfo_y())
         self.root.update()
-        photo_cam= self.IconResize(self.saveParaPath+'img_Cam.png')
+        photo_cam= self.IconResize(gui_vars.saveParaPath+'img_Cam.png')
         self.btn_CamGrab= Tkinter.Button(self.tab_control,image= photo_cam, cursor= 'hand2', command= self.btn_saveImg_click)
         self.btn_CamGrab.image= photo_cam
         self.btn_CamGrab.place(x= self.btn_Water.winfo_x()+ int(self.btn_Water.winfo_reqwidth()*1.5)+ self.interval_x, y=self.btn_Seed.winfo_y())
@@ -519,26 +495,26 @@ class App:
             self.ArdMntr.set_Acceleration(self.Acceleration[2],'z')
 
     def store_para(self, arg_filepath, arg_filename):
-        tmp=[]
-        tmp.append(self.scale_threshold_graylevel.get())
-        tmp.append(self.scale_threshold_size.get())
-        tmp.append([int(self.entry_1stXpos.get()), int(self.entry_ScanInterval_X.get()), int(self.entry_ScanAmount_X.get())])
-        tmp.append( [int(self.entry_1stYpos.get()), int(self.entry_ScanInterval_Y.get()), int(self.entry_ScanAmount_Y.get())])
-        tmp.append(self.limit)
-        tmp.append(self.MaxSpeed)
-        tmp.append(self.Acceleration)
-        tmp.append(self.CameraID)
-        tmp.append(self.Peripheral_para)
-        tmp.append(self.rdbtnMvAmount_Mode)
-        tmp.append(self.scriptPath)
-        self.config.write_json(self.ItemList, tmp)
+        saveDict={}
+        saveDict['thrshd_gray']= self.scale_threshold_graylevel.get()
+        saveDict['thrshd_size']= self.scale_threshold_size.get()
+        saveDict['Scan_X (Beg,Interval,Amount)']= [int(self.entry_1stXpos.get()), int(self.entry_ScanInterval_X.get()), int(self.entry_ScanAmount_X.get())]
+        saveDict['Scan_Y (Beg,Interval,Amount)']= [int(self.entry_1stYpos.get()), int(self.entry_ScanInterval_Y.get()), int(self.entry_ScanAmount_Y.get())]
+        saveDict['limit Maximum (X,Y)']= self.limit
+        saveDict['Max Speed (X, Y)']= self.MaxSpeed
+        saveDict['Ac/Deceleration (X, Y)']= self.Acceleration
+        saveDict['Camera ID']= self.CameraID
+        saveDict['Peripheral Setting']= self.Peripheral_para
+        saveDict['Move Amount type (5 types)']= self.rdbtnMvAmount_Mode
+        saveDict['script Path']= self.scriptPath
+        self.config.write_json(saveDict)
         print "Para set"
 
     # Override CLOSE function
     def on_exit(self):
         #When you click to exit, this function is called
         if tkMessageBox.askyesno("Exit", "Do you want to quit the application?"):
-            self.store_para(self.saveParaPath, self.configName)
+            self.store_para(gui_vars.saveParaPath, gui_vars.configName)
             print 'Close Main Thread...'
             self.main_run_judge= False
             self.ArdMntr.exit= True
@@ -583,7 +559,7 @@ class App:
             if begX< mouse_x < begX+ self.mergeframe_splitX*self.scan_Y[2] and begY< mouse_y< begY+ self.mergeframe_splitY*self.scan_X[2]:
                 tmp_filename= '{0}_{1}'.format(tmp_Y*self.scan_X[1], tmp_X*self.scan_Y[1]) 
                 #print 'click file: ', tmp_filename
-                tmp_frame= cv2.imread(self.savePath+'Scanning/Raw_'+tmp_filename+'.jpg')
+                tmp_frame= cv2.imread(gui_vars.savePath+'Scanning/Raw_'+tmp_filename+'.jpg')
                 self.imagename= tmp_filename
                 self.singleframe= tmp_frame.copy()
                 self.display_panel_singleframe(tmp_frame)
@@ -685,7 +661,7 @@ class App:
         #result= self.CamMntr.subract_test()
         self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
         self.imageProcessor.set_threshold_graylevel(int(self.scale_threshold_graylevel.get()))
-        result= self.imageProcessor.get_contour(self.singleframe, True, self.savePath, 'Otsu_Binary_'+self.imagename, 1)
+        result= self.imageProcessor.get_contour(self.singleframe, True, gui_vars.savePath, 'Otsu_Binary_'+self.imagename, 1)
         self.display_panel_singleframe(result)
 
     def method_SimpleBinary(self):
@@ -693,7 +669,7 @@ class App:
         #result= self.CamMntr.subract_test()
         self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
         self.imageProcessor.set_threshold_graylevel(int(self.scale_threshold_graylevel.get()))
-        result= self.imageProcessor.get_contour(self.singleframe, True, self.savePath, 'Simple_Binary_'+self.imagename, 0)
+        result= self.imageProcessor.get_contour(self.singleframe, True, gui_vars.savePath, 'Simple_Binary_'+self.imagename, 0)
         self.display_panel_singleframe(result)
 
     def set_ArdConnect(self):
@@ -799,8 +775,10 @@ class App:
                 print 'event.keycode', event.keycode
                 move_type= event.keysym
                 print 'Test ',move_type is 'Up'
-
+            #self.Move_interval= self.MvAmount.get()
             tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+            print '==>>> ',tmp_x, tmp_y, tmp_z
+            print '==>>> ',self.Move_interval*self.Move_intervalUnit
             if move_type == 'Up':
                 self.ArdMntr.move_Coord(tmp_x+ self.Move_interval*self.Move_intervalUnit, tmp_y, tmp_z)
             elif move_type == 'Down':
@@ -825,9 +803,11 @@ class App:
 
     def btn_Seed_click(self):
         if self.ArdMntr.connect:
+            self.ArdMntr.switch_Seed(self.pinNumb_seed, not(self.ArdMntr.SeedOn))
             print 'Seeding... '
     def btn_Water_click(self):
         if self.ArdMntr.connect:
+            self.ArdMntr.switch_Water(self.pinNumb_water,not(self.ArdMntr.WaterOn) , -1)
             print 'Watering... '
     
     def btn_choosescript_click(self):
@@ -959,7 +939,7 @@ class App:
         #self.saveImg= True
         self.imagename= 'Frame1'
         self.singleframe = self.CamMntr.get_frame()
-        self.saveImg_function(self.singleframe, self.savePath, self.imagename)
+        self.saveImg_function(self.singleframe, gui_vars.savePath, self.imagename)
         self.display_panel_singleframe(self.singleframe)
 
 
@@ -1056,8 +1036,8 @@ class App:
                             #self.saveScanning= self.ArdMntr.cmd_state.strCurX+'_'+self.ArdMntr.cmd_state.strCurY
                             self.saveScanning= '{0}_{1}'.format(tmp_X, tmp_Y)
                             frame= self.CamMntr.get_frame()
-                            self.saveImg_function(frame, self.savePath+'Scanning/',self.ScanTimeIndex+'_'+self.saveScanning)
-                            #result= self.imageProcessor.get_contour(frame, True, self.savePath+'Scanning/', 'Detect_'+self.saveScanning,1)
+                            self.saveImg_function(frame, gui_vars.savePath+'Scanning/',self.ScanTimeIndex+'_'+self.saveScanning)
+                            #result= self.imageProcessor.get_contour(frame, True, gui_vars.savePath+'Scanning/', 'Detect_'+self.saveScanning,1)
                             result= frame.copy()
                             self.display_panel_singleframe(result)
                             #self.display_panel_mergeframe(result, step_X, step_Y)
@@ -1097,10 +1077,12 @@ class App:
             frame = self.mark_cross_line(frame)
             frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
             text='Arduino Connection Refused ...'
+            text_water=''
+            text_seed=''
             color= (0,0,0)
             if self.ArdMntr.connect== True:
                 if self.StartScan_judge == False:
-                    if self.ArdMntr.cmd_state.is_ready():
+                    if self.ArdMntr.cmd_state.is_ready() :
                         text= 'Idling ...'
                         color = (0 , 255 , 0)
                     else:
@@ -1113,8 +1095,14 @@ class App:
                     else:
                         text= 'Scanning...'+'(X, Y)= ('+self.ArdMntr.cmd_state.strCurX+', '+self.ArdMntr.cmd_state.strCurY+')'
                         color = (255,0,0)
+                if self.ArdMntr.WaterOn:
+                    text_water= 'Water: On  '
+                    cv2.putText(frame, text_water,(10,70),cv2.FONT_HERSHEY_SIMPLEX, 0.7,(255,0,0),1)
+                if self.ArdMntr.SeedOn:
+                    text_seed= 'Vaccum: On  '
+                    cv2.putText(frame, text_seed,(10,100),cv2.FONT_HERSHEY_SIMPLEX, 0.7,(255,0,0),1)
             cv2.putText(frame, text,(10,40),cv2.FONT_HERSHEY_SIMPLEX, 0.7,color,1)
-            self.strStatus= text
+            self.strStatus= text+ ' ; '+ text_water+ text_seed
             self.set_frame(frame)
         time.sleep(0.01)
 

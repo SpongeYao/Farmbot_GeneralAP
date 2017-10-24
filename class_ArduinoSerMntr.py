@@ -4,9 +4,6 @@
 # sample output, ver_cmd_mode = False:
 #R83 GENESIS V.01.04
 #
-#R02
-#
-#R01
 import threading
 from serial import *
 import time
@@ -85,6 +82,9 @@ class MonitorThread(threading.Thread):
         self.wait = wait
         self.exit = False
         self.connect = False
+        self.WaterOn= False
+        self.SeedOn= False
+        self.FanOn= False
         self.channel=['/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2', '/dev/tty0', '/dev/ttyUSB0']
         self.connect_serial()
         self.cmd_state = CmdState()
@@ -137,6 +137,29 @@ class MonitorThread(threading.Thread):
         self.ser.write(send_str + " \r\n")
         self.cmd_state.set_by_send(send_str)
 
+    def switch_Water(self, arg_pinNumb=9, arg_On=False, arg_delay=-1):
+        if arg_On:
+            self.serial_send('F41 P9 V1 M0')
+            self.WaterOn= True
+            if arg_delay== 0:
+                self.serial_send('F41 P9 V0 M0')
+                self.WaterOn= False
+            elif arg_delay> 0:
+                time.sleep(arg_delay)
+                self.serial_send('F41 P9 V0 M0')
+                self.WaterOn= False
+        else:
+            self.serial_send('F41 P9 V0 M0')
+            self.WaterOn= False
+
+    def switch_Seed(self, arg_pinNumb=10, arg_On=True):
+        if arg_On:
+            self.serial_send('F41 P{0} V1 M0'.format(arg_pinNumb))
+            self.SeedOn= True
+        else:
+            self.serial_send('F41 P{0} V1 M0'.format(arg_pinNumb))
+            self.SeedOn= False
+                
     def move_Coord(self, arg_Xpos, arg_Ypos, arg_Zpos):
         cmd= 'G00 X{0} Y{1} Z{2}'.format(arg_Xpos, arg_Ypos, arg_Zpos)
         self.serial_send(cmd)

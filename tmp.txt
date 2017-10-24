@@ -1,4 +1,12 @@
-G00 X0 Y0 Z0#Move to location at given speed for axis (don't have to be a straight line), in absolute coordinates
+#Watering Example
+G00 X0 Y0 Z0 #Move to location at given speed for axis (don't have to be a straight line), in absolute coordinates
 F41 P9 V1 M0
-G00 X0 Y90000 Z0#Move to location at given speed for axis (don't have to be a straight line), in absolute coordinates
+G00 X0 Y5000 Z0 #Move to location at given speed for axis (don't have to be a straight line), in absolute coordinates
 F41 P9 V0 M0
+G00 X0 Y2500 Z0 #Move to location at given speed for axis (don't have to be a straight line), in absolute coordinates
+F41 P9 V1 M0
+F41 P9 V0 M0
+G00 X0 Y0 Z0 #Move to location at given speed for axis (don't have to be a straight line), in absolute coordinates
+
+
+
