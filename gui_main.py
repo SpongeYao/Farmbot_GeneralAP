@@ -991,13 +991,24 @@ class App:
                 cmd = cmd.strip()
                 if len(cmd)>0:
                     print(">> "+cmd)
-                    while 1:
-                        if self.ArdMntr.cmd_state.is_ready(): #wait system ready to accept commands
-                            self.ArdMntr.serial_send("%s" %cmd)
-                            time.sleep(1)
-                            break
-                        else:
-                            time.sleep(1)
+                    cmd_code= cmd.strip().split(' ')[0].replace(' ','')
+                    if cmd_code[0]== 'C':
+                        if cmd_code[1:]== '00':
+                            TimeIndex= datetime.now().strftime('%Y%m%d%H%M%S')
+                            tmp_x, tmp_y, tmp_z= self.ArdMntr.get_CurPosition()
+                            imgName= '{0}_{1}_{2}_{3}'.format(TimeIndex, tmp_x, tmp_y, tmp_z)
+                            self.singleframe= self.CamMntr.get_frame()
+                            self.saveImg_function(self.singleframe, gui_vars.savePath, imgName)
+                            self.display_panel_singleframe(self.singleframe)
+                                    
+                    else:
+                        while 1:
+                            if self.ArdMntr.cmd_state.is_ready(): #wait system ready to accept commands
+                                self.ArdMntr.serial_send("%s" %cmd)
+                                time.sleep(1)
+                                break
+                            else:
+                                time.sleep(1)
             time.sleep(1)
             if self.StartRunScript_judge== False:
                 break

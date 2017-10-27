@@ -157,7 +157,7 @@ class MonitorThread(threading.Thread):
             self.serial_send('F41 P{0} V1 M0'.format(arg_pinNumb))
             self.SeedOn= True
         else:
-            self.serial_send('F41 P{0} V1 M0'.format(arg_pinNumb))
+            self.serial_send('F41 P{0} V0 M0'.format(arg_pinNumb))
             self.SeedOn= False
                 
     def move_Coord(self, arg_Xpos, arg_Ypos, arg_Zpos):
