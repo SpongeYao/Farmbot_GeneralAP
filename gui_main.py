@@ -850,7 +850,7 @@ class App:
                 #===================================
                 # Delete Scanning Thread
                 #===================================
-                self.StartScan_judge= False
+                self.StartRunScript_judge= False
                 del(self.thread_runningScript)
                 '''
                 self.tabbox.tab(self.tab_control, state='normal')
