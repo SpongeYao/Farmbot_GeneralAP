@@ -1,4 +1,6 @@
 import os
+import cv2
+import tkMessageBox
 
 def check_path(arg_path, arg_mkdir= True):
     # make sure output dir exists
@@ -20,4 +22,11 @@ def getList_path(arg_path):
     if check_path(arg_path, False):
         return [name for name in os.listdir(arg_path)]
     else:
+        return False
+
+def readImage(arg_path):
+    if check_file(arg_path):
+        return cv2.imread(arg_path)
+    else:
+        tkMessageBox.showerror("Error", arg_path+'\n is NOT found')
         return False

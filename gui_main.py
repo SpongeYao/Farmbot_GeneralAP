@@ -23,6 +23,8 @@ from class_ArduinoSerMntr import*
 from class_CameraMntr import*
 import class_MyThread
 import class_ImageProcessing
+from class_PlantIdentifier import PlantIdentifier
+import imgProcess_tool 
 import gui_vars
 from class_ConfigSetting import ConfigSetting
 #from class_ConfigSetting_new import ConfigSetting
@@ -33,7 +35,6 @@ import utils_tool
 class App:
     # Ininitalization
     def __init__(self,root):
-
         strFont= 'Arial'
         myfont14 = tkFont.Font(family=strFont, size=14, weight= tkFont.BOLD)
         myfont12 = tkFont.Font(family=strFont, size=12)#, weight= tkFont.BOLD)
@@ -54,12 +55,10 @@ class App:
         self.root.attributes('-zoomed', True) # FullScreen
         '''
         self.root= root
+        self.root.update()
         # =================================
         # Parameters
         # =================================
-        gui_vars.savePath= 'Data/'
-        gui_vars.saveParaPath= 'Data/Para/'
-        gui_vars.configName= 'config.json'
         if utils_tool.check_path(gui_vars.saveParaPath):
             self.img = Tkinter.PhotoImage(file = gui_vars.saveParaPath+'Icon_2.png')
             self.root.tk.call('wm', 'iconphoto', self.root._w, self.img)
@@ -67,7 +66,8 @@ class App:
         params= self.config.read_json()
         #print 'para: ',params
         self.threshold_graylevel= params['thrshd_gray']
-        self.threshold_size= params['thrshd_size'] 
+        self.threshold_MinSize= params['thrshd_Minsize'] 
+        self.threshold_MaxSize= params['thrshd_Maxsize'] 
         self.scan_X= params['Scan_X (Beg,Interval,Amount)']
         self.scan_Y= params['Scan_Y (Beg,Interval,Amount)']
         self.limit= params['limit Maximum (X,Y)']
@@ -101,7 +101,7 @@ class App:
         print 'screen: ',[self.root.winfo_screenwidth(), self.root.winfo_screenheight()]
         print 'w, h: ',[self.root.winfo_width(), self.root.winfo_height()]
         btn_width, btn_height= 8, 1
-        self.interval_x, self.interval_y= 6, 6
+        #gui_vars.interval_x, gui_vars.interval_y= 6, 6
         self.mergeframe_spaceY= 50
         #print width,',', height,' ; ',btn_width,',', btn_height
         
@@ -111,6 +111,7 @@ class App:
         self.menubar= Tkinter.Menu(self.root)
         self.FileMenu = Tkinter.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="File",underline=0, menu=self.FileMenu)
+        self.FileMenu.add_command(label="Load Image", command=self.btn_loadImg_click)
         self.FileMenu.add_command(label="Save Image", command=self.btn_saveImg_click)
         self.SettingMenu = Tkinter.Menu(self.menubar, tearoff=0)
         self.SettingMenu.add_command(label= "Peripheral Setting", command= self.set_Peripheral)
@@ -138,15 +139,16 @@ class App:
         # [ROOT] Current position of motor
         # ==================================================
         self.lbl_CurrPos= Tkinter.Label(self.root, text="Location: (X, Y, Z)= (-1, -1, -1)",font= myfont14)
-        self.lbl_CurrPos.place(x= self.interval_x, y= self.interval_y)
+        self.lbl_CurrPos.place(x= gui_vars.interval_x, y= gui_vars.interval_y)
         self.root.update()
 
         # ====================
         # [Config] Tabpages
         # ====================
-        #Left_width= self.lbl_MoveCoord.winfo_reqwidth()+ self.interval_x*11
-        Left_width= int((self.screen_width-self.interval_x*2)*0.25)
-        Left_height= int((self.screen_height-self.FileMenu.winfo_reqheight()*1- self.statuslabel.winfo_reqheight()*1-self.interval_y*7- self.lbl_CurrPos.winfo_reqheight()))
+        self.screen_width, self.screen_height= self.root.winfo_width(), self.root.winfo_height()
+        #Left_width= self.lbl_MoveCoord.winfo_reqwidth()+ gui_vars.interval_x*11
+        Left_width= int((self.screen_width-gui_vars.interval_x*2)*0.25)
+        Left_height= int((self.screen_height-self.FileMenu.winfo_reqheight()*1- self.statuslabel.winfo_reqheight()*0-gui_vars.interval_y*2- self.lbl_CurrPos.winfo_reqheight()))
         self.tabbox = ttk.Notebook(self.root, width=Left_width, height=Left_height)
         self.tab_control = Tkinter.Frame(self.root)
 	self.tab_loadscript = Tkinter.Frame(self.root)
@@ -157,7 +159,7 @@ class App:
 	self.tabbox.add(self.tab_imageprocess, text="IMAGE")
 
 	#self.tabbox.place(x= 0, y= 0)
-	self.tabbox.place(x= 0, y= self.lbl_CurrPos.winfo_y()+ self.lbl_CurrPos.winfo_reqheight()+ self.interval_y)
+	self.tabbox.place(x= 0, y= self.lbl_CurrPos.winfo_y()+ self.lbl_CurrPos.winfo_reqheight()+ gui_vars.interval_y)
         self.root.update()
         print '*** Input Tab', Left_width, Left_height
         print '*** TAB',self.tabbox.winfo_reqwidth(), self.tabbox.winfo_reqheight()
@@ -166,8 +168,8 @@ class App:
         # [TAB CONTROL] Step Motor Control 
         # ==================================================
         self.lbl_MoveCoord= Tkinter.Label(self.tab_control, text="[ MOVE ]", font= myfont14)
-        #self.lbl_MoveCoord.place(x= self.interval_x, y= self.lbl_CurrPos.winfo_y()+ self.lbl_CurrPos.winfo_height()+self.interval_y)
-        self.lbl_MoveCoord.place(x= self.interval_x, y= self.interval_y)
+        #self.lbl_MoveCoord.place(x= gui_vars.interval_x, y= self.lbl_CurrPos.winfo_y()+ self.lbl_CurrPos.winfo_height()+gui_vars.interval_y)
+        self.lbl_MoveCoord.place(x= gui_vars.interval_x, y= gui_vars.interval_y)
         self.root.update()
 
         # ==================================================
@@ -175,25 +177,25 @@ class App:
         # ==================================================
         #self.rdbtnMvAmount_Mode= [('100', 100),('500', 500),('1k',1000),('10k',10000), ('100k',100000)]
         self.MvAmount= Tkinter.IntVar()
-        self.rdbtn_MvAmount_1= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[0][0], value= self.rdbtnMvAmount_Mode[0][1],variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
-        self.rdbtn_MvAmount_1.place(x= self.interval_x, y=self.lbl_MoveCoord.winfo_y()+ self.lbl_MoveCoord.winfo_reqheight()+ self.interval_y)
+        self.rdbtn_MvAmount_1= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[0][0], value= self.rdbtnMvAmount_Mode[0][1],variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_MvAmount_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
+        self.rdbtn_MvAmount_1.place(x= gui_vars.interval_x, y=self.lbl_MoveCoord.winfo_y()+ self.lbl_MoveCoord.winfo_reqheight()+ gui_vars.interval_y)
         self.root.update()
-        self.rdbtn_MvAmount_5= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[1][0], value=self.rdbtnMvAmount_Mode[1][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
-        self.rdbtn_MvAmount_5.place(x= self.interval_x+ self.rdbtn_MvAmount_1.winfo_x()+ self.rdbtn_MvAmount_1.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
+        self.rdbtn_MvAmount_5= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[1][0], value=self.rdbtnMvAmount_Mode[1][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_MvAmount_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
+        self.rdbtn_MvAmount_5.place(x= gui_vars.interval_x+ self.rdbtn_MvAmount_1.winfo_x()+ self.rdbtn_MvAmount_1.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
         self.root.update()
-        self.rdbtn_MvAmount_10= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[2][0], value=self.rdbtnMvAmount_Mode[2][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
-        self.rdbtn_MvAmount_10.place(x= self.interval_x+ self.rdbtn_MvAmount_5.winfo_x()+ self.rdbtn_MvAmount_5.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
+        self.rdbtn_MvAmount_10= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[2][0], value=self.rdbtnMvAmount_Mode[2][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_MvAmount_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
+        self.rdbtn_MvAmount_10.place(x= gui_vars.interval_x+ self.rdbtn_MvAmount_5.winfo_x()+ self.rdbtn_MvAmount_5.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
         self.root.update()
-        self.rdbtn_MvAmount_50= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[3][0], value=self.rdbtnMvAmount_Mode[3][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
-        self.rdbtn_MvAmount_50.place(x= self.interval_x+ self.rdbtn_MvAmount_10.winfo_x()+ self.rdbtn_MvAmount_10.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
+        self.rdbtn_MvAmount_50= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[3][0], value=self.rdbtnMvAmount_Mode[3][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_MvAmount_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
+        self.rdbtn_MvAmount_50.place(x= gui_vars.interval_x+ self.rdbtn_MvAmount_10.winfo_x()+ self.rdbtn_MvAmount_10.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
         self.root.update()
-        self.rdbtn_MvAmount_100= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[4][0], value=self.rdbtnMvAmount_Mode[4][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
-        self.rdbtn_MvAmount_100.place(x= self.interval_x+ self.rdbtn_MvAmount_50.winfo_x()+ self.rdbtn_MvAmount_50.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
+        self.rdbtn_MvAmount_100= Tkinter.Radiobutton(self.tab_control, text= self.rdbtnMvAmount_Mode[4][0], value=self.rdbtnMvAmount_Mode[4][1], variable= self.MvAmount,font= myfont12_Bold, command= self.rdbtn_MvAmount_click, indicatoron=0, width=5, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active,selectcolor= bgGray_select)
+        self.rdbtn_MvAmount_100.place(x= gui_vars.interval_x+ self.rdbtn_MvAmount_50.winfo_x()+ self.rdbtn_MvAmount_50.winfo_reqwidth(),y= self.rdbtn_MvAmount_1.winfo_y())
         self.root.update()
         self.rdbtn_MvAmount_10.select()
         self.Move_interval= self.rdbtnMvAmount_Mode[2][1]
         self.lbl_posUnit_1= Tkinter.Label(self.tab_control, text='(step)')
-        self.lbl_posUnit_1.place(x= self.rdbtn_MvAmount_100.winfo_x()+ self.rdbtn_MvAmount_100.winfo_width(), y= self.rdbtn_MvAmount_1.winfo_y()+self.interval_y)
+        self.lbl_posUnit_1.place(x= self.rdbtn_MvAmount_100.winfo_x()+ self.rdbtn_MvAmount_100.winfo_width(), y= self.rdbtn_MvAmount_1.winfo_y()+gui_vars.interval_y)
         self.root.update()
         
         # ==================================================
@@ -202,28 +204,28 @@ class App:
         photo_up= self.IconResize(gui_vars.saveParaPath+'img_Up.png')
         self.btn_MoveUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Up'))
         self.btn_MoveUp.image= photo_up
-        self.btn_MoveUp.place(x= self.rdbtn_MvAmount_10.winfo_x()+int(self.rdbtn_MvAmount_10.winfo_reqwidth()*0), y=self.rdbtn_MvAmount_1.winfo_y()+ self.rdbtn_MvAmount_1.winfo_reqheight()+ self.interval_y)
+        self.btn_MoveUp.place(x= self.rdbtn_MvAmount_10.winfo_x()+int(self.rdbtn_MvAmount_10.winfo_reqwidth()*0), y=self.rdbtn_MvAmount_1.winfo_y()+ self.rdbtn_MvAmount_1.winfo_reqheight()+ gui_vars.interval_y)
         self.root.update()
         photo_down= self.IconResize(gui_vars.saveParaPath+'img_Down.png')
         self.btn_MoveDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Down'))
         self.btn_MoveDown.image= photo_down
-        self.btn_MoveDown.place(x= self.btn_MoveUp.winfo_x(), y=self.btn_MoveUp.winfo_y()+ self.btn_MoveUp.winfo_reqheight()+ self.interval_y)
+        self.btn_MoveDown.place(x= self.btn_MoveUp.winfo_x(), y=self.btn_MoveUp.winfo_y()+ self.btn_MoveUp.winfo_reqheight()+ gui_vars.interval_y)
         self.root.update()
         photo_left= self.IconResize(gui_vars.saveParaPath+'img_Left.png')
         self.btn_MoveLeft= Tkinter.Button(self.tab_control,image= photo_left, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Left'))
         self.btn_MoveLeft.image= photo_left
-        self.btn_MoveLeft.place(x= self.btn_MoveDown.winfo_x()- self.btn_MoveDown.winfo_width()- self.interval_x, y=self.btn_MoveDown.winfo_y())
+        self.btn_MoveLeft.place(x= self.btn_MoveDown.winfo_x()- self.btn_MoveDown.winfo_width()- gui_vars.interval_x, y=self.btn_MoveDown.winfo_y())
         self.root.update()
         photo_right= self.IconResize(gui_vars.saveParaPath+'img_Right.png')
         self.btn_MoveRight= Tkinter.Button(self.tab_control,image= photo_right, cursor= 'hand2', command= lambda: self.btn_MoveAmount_click('Right'))
         self.btn_MoveRight.image= photo_right
-        self.btn_MoveRight.place(x= self.btn_MoveDown.winfo_x()+ self.btn_MoveDown.winfo_width()+ self.interval_x, y=self.btn_MoveDown.winfo_y())
+        self.btn_MoveRight.place(x= self.btn_MoveDown.winfo_x()+ self.btn_MoveDown.winfo_width()+ gui_vars.interval_x, y=self.btn_MoveDown.winfo_y())
         self.root.update()
 
 
         self.btn_MoveZUp= Tkinter.Button(self.tab_control,image= photo_up, cursor= 'hand2', command= lambda: self.btn_MoveAmountZaxis_click('Up'))
         self.btn_MoveZUp.image= photo_up
-        self.btn_MoveZUp.place(x= self.btn_MoveRight.winfo_x()+ self.btn_MoveRight.winfo_reqwidth()+ self.interval_x*4, y=self.btn_MoveUp.winfo_y())
+        self.btn_MoveZUp.place(x= self.btn_MoveRight.winfo_x()+ self.btn_MoveRight.winfo_reqwidth()+ gui_vars.interval_x*4, y=self.btn_MoveUp.winfo_y())
         self.root.update()
         self.btn_MoveZDown= Tkinter.Button(self.tab_control,image= photo_down, cursor= 'hand2', command= lambda: self.btn_MoveAmountZaxis_click('Down'))
         self.btn_MoveZDown.image= photo_down
@@ -236,32 +238,32 @@ class App:
         photo_seed= self.IconResize(gui_vars.saveParaPath+'img_Seed.png')
         self.btn_Seed= Tkinter.Button(self.tab_control,image= photo_seed, cursor= 'hand2', command= self.btn_Seed_click)
         self.btn_Seed.image= photo_seed
-        self.btn_Seed.place(x= self.btn_MoveUp.winfo_x()- int(self.btn_MoveUp.winfo_reqwidth()*1.5)- self.interval_x, y=self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_reqheight()+ self.interval_y*2)
+        self.btn_Seed.place(x= self.btn_MoveUp.winfo_x()- int(self.btn_MoveUp.winfo_reqwidth()*1.5)- gui_vars.interval_x, y=self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_reqheight()+ gui_vars.interval_y*2)
         self.root.update()
         photo_water= self.IconResize(gui_vars.saveParaPath+'img_Water.png')
         self.btn_Water= Tkinter.Button(self.tab_control,image= photo_water, cursor= 'hand2', command= self.btn_Water_click)
         self.btn_Water.image= photo_water
-        self.btn_Water.place(x= self.btn_Seed.winfo_x()+ int(self.btn_Seed.winfo_reqwidth()*1.5)+ self.interval_x, y=self.btn_Seed.winfo_y())
+        self.btn_Water.place(x= self.btn_Seed.winfo_x()+ int(self.btn_Seed.winfo_reqwidth()*1.5)+ gui_vars.interval_x, y=self.btn_Seed.winfo_y())
         self.root.update()
         photo_cam= self.IconResize(gui_vars.saveParaPath+'img_Cam.png')
         self.btn_CamGrab= Tkinter.Button(self.tab_control,image= photo_cam, cursor= 'hand2', command= self.btn_saveImg_click)
         self.btn_CamGrab.image= photo_cam
-        self.btn_CamGrab.place(x= self.btn_Water.winfo_x()+ int(self.btn_Water.winfo_reqwidth()*1.5)+ self.interval_x, y=self.btn_Seed.winfo_y())
+        self.btn_CamGrab.place(x= self.btn_Water.winfo_x()+ int(self.btn_Water.winfo_reqwidth()*1.5)+ gui_vars.interval_x, y=self.btn_Seed.winfo_y())
         self.root.update()
 
         # ==================================================
         # [TAB CONTROL] Move To 
         # ==================================================
         self.lbl_Xpos= Tkinter.Label(self.tab_control, text= 'X :',font= myfont12)
-        #self.lbl_Xpos.place(x= self.interval_x, y = self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_height()+self.interval_y*3)
-        self.lbl_Xpos.place(x= self.interval_x, y = self.btn_Seed.winfo_y()+ self.btn_Seed.winfo_height()+self.interval_y*3)
+        #self.lbl_Xpos.place(x= gui_vars.interval_x, y = self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_height()+gui_vars.interval_y*3)
+        self.lbl_Xpos.place(x= gui_vars.interval_x, y = self.btn_Seed.winfo_y()+ self.btn_Seed.winfo_height()+gui_vars.interval_y*3)
         self.root.update()
         self.entry_Xpos= Tkinter.Entry(self.tab_control, font= myfont12, width=4)
         self.entry_Xpos.insert(Tkinter.END, "0")
         self.entry_Xpos.place(x= self.lbl_Xpos.winfo_x()+ self.lbl_Xpos.winfo_width(), y= self.lbl_Xpos.winfo_y())
         self.root.update()
         self.lbl_Ypos= Tkinter.Label(self.tab_control, text= 'Y :',font= myfont12)
-        self.lbl_Ypos.place(x= self.entry_Xpos.winfo_x()+ self.entry_Xpos.winfo_width()+ self.interval_x, y = self.lbl_Xpos.winfo_y())
+        self.lbl_Ypos.place(x= self.entry_Xpos.winfo_x()+ self.entry_Xpos.winfo_width()+ gui_vars.interval_x, y = self.lbl_Xpos.winfo_y())
         self.root.update()
         self.entry_Ypos= Tkinter.Entry(self.tab_control, font= myfont12, width=4)
         self.entry_Ypos.insert(Tkinter.END, "0")
@@ -269,7 +271,7 @@ class App:
         self.root.update()
         
         self.lbl_Zpos= Tkinter.Label(self.tab_control, text= 'Z :',font= myfont12)
-        self.lbl_Zpos.place(x= self.entry_Ypos.winfo_x()+ self.entry_Ypos.winfo_width()+ self.interval_x, y = self.lbl_Xpos.winfo_y())
+        self.lbl_Zpos.place(x= self.entry_Ypos.winfo_x()+ self.entry_Ypos.winfo_width()+ gui_vars.interval_x, y = self.lbl_Xpos.winfo_y())
         self.root.update()
         self.entry_Zpos= Tkinter.Entry(self.tab_control, font= myfont12, width=4)
         self.entry_Zpos.insert(Tkinter.END, "0")
@@ -277,10 +279,10 @@ class App:
         self.root.update()
 
         self.lbl_posUnit= Tkinter.Label(self.tab_control, text='(step)')
-        self.lbl_posUnit.place(x= self.entry_Zpos.winfo_x()+ self.entry_Zpos.winfo_width(), y= self.entry_Zpos.winfo_y()+self.interval_y)
+        self.lbl_posUnit.place(x= self.entry_Zpos.winfo_x()+ self.entry_Zpos.winfo_width(), y= self.entry_Zpos.winfo_y()+gui_vars.interval_y)
         self.root.update()
         self.btn_MoveTo= Tkinter.Button(self.tab_control, text= 'GO', command= self.btn_MoveTo_click,font= myfont12_Bold, bg= self.bgGreen, fg= 'white', activebackground= self.bgGreen_active, activeforeground= 'white')
-        self.btn_MoveTo.place(x= self.lbl_posUnit.winfo_x()+ self.lbl_posUnit.winfo_reqwidth()+ self.interval_x, y=self.lbl_Ypos.winfo_y())
+        self.btn_MoveTo.place(x= self.lbl_posUnit.winfo_x()+ self.lbl_posUnit.winfo_reqwidth()+ gui_vars.interval_x, y=self.lbl_Ypos.winfo_y())
         self.btn_MoveTo.focus_set()
         self.root.update()
 
@@ -288,11 +290,11 @@ class App:
         # [TAB CONTROL] Scanning Control 
         # ==================================================
         self.lbl_Scan= Tkinter.Label(self.tab_control, text="[ AUTO-SCAN ]", font= myfont14)
-        self.lbl_Scan.place(x= self.interval_x, y= self.btn_MoveTo.winfo_y()+ self.btn_MoveTo.winfo_height()+self.interval_y)
+        self.lbl_Scan.place(x= gui_vars.interval_x, y= self.btn_MoveTo.winfo_y()+ self.btn_MoveTo.winfo_height()+gui_vars.interval_y)
         self.root.update()
 
         self.lbl_Scan1stPt= Tkinter.Label(self.tab_control, text= '*Start point (X, Y):',font= myfont12)
-        self.lbl_Scan1stPt.place(x= self.interval_x, y = self.lbl_Scan.winfo_y()+ self.lbl_Scan.winfo_height()+self.interval_y)
+        self.lbl_Scan1stPt.place(x= gui_vars.interval_x, y = self.lbl_Scan.winfo_y()+ self.lbl_Scan.winfo_height()+gui_vars.interval_y)
         self.root.update()
         self.entry_1stXpos= Tkinter.Entry(self.tab_control, font= myfont12, width= 6)
         self.entry_1stXpos.insert(Tkinter.END, '{0}'.format(self.scan_X[0]))
@@ -309,7 +311,7 @@ class App:
         self.root.update()
        
         self.lbl_ScanInterval= Tkinter.Label(self.tab_control, text='* Interval (X, Y) :', font= myfont12)
-        self.lbl_ScanInterval.place(x= self.entry_1stYpos.winfo_x()+ self.entry_1stYpos.winfo_reqwidth()+ self.interval_x*4, y= self.lbl_Scan1stPt.winfo_y())
+        self.lbl_ScanInterval.place(x= self.entry_1stYpos.winfo_x()+ self.entry_1stYpos.winfo_reqwidth()+ gui_vars.interval_x*4, y= self.lbl_Scan1stPt.winfo_y())
         self.root.update()
         self.entry_ScanInterval_X= Tkinter.Entry(self.tab_control, font=myfont12, width=6)
         self.entry_ScanInterval_X.insert(Tkinter.END, '{0}'.format(self.scan_X[1]))
@@ -324,7 +326,7 @@ class App:
         self.root.update()
 
         self.lbl_ScanAmount= Tkinter.Label(self.tab_control, text='* Scanning Step (X, Y) :', font= myfont12)
-        self.lbl_ScanAmount.place(x= self.entry_1stXpos.winfo_x(), y= self.entry_1stXpos.winfo_y()+ self.entry_1stXpos.winfo_height()+self.interval_y)
+        self.lbl_ScanAmount.place(x= self.entry_1stXpos.winfo_x(), y= self.entry_1stXpos.winfo_y()+ self.entry_1stXpos.winfo_height()+gui_vars.interval_y)
         self.root.update()
         self.entry_ScanAmount_X= Tkinter.Entry(self.tab_control, font=myfont12, width=6)
         self.entry_ScanAmount_X.insert(Tkinter.END, '{0}'.format(self.scan_X[2]))
@@ -339,69 +341,101 @@ class App:
         self.root.update()
 
         self.btn_StartScan= Tkinter.Button(self.tab_control, text= 'Start Scan', command= self.btn_StartScan_click,font= myfont12_Bold, fg= 'white', activeforeground='white', bg=self.bgGreen, activebackground=self.bgGreen_active, width= btn_width, height= btn_height)
-        self.btn_StartScan.place(x= self.entry_ScanInterval_X.winfo_x()+ self.interval_x*6, y=self.lbl_ScanAmount.winfo_y()+self.interval_y*2)
+        self.btn_StartScan.place(x= self.entry_ScanInterval_X.winfo_x()+ gui_vars.interval_x*6, y=self.lbl_ScanAmount.winfo_y()+gui_vars.interval_y*2)
         self.root.update()
         
         # ==================================================
         # [TAB LOAD SCRIPT]  
         # ==================================================
         self.lbl_loadscript= Tkinter.Label(self.tab_loadscript, text="[ Load & Run Script ]", font= myfont14)
-        self.lbl_loadscript.place(x= self.interval_x, y= self.interval_y)
+        self.lbl_loadscript.place(x= gui_vars.interval_x, y= gui_vars.interval_y)
         self.root.update()
         
         self.entry_scriptPath= Tkinter.Entry(self.tab_loadscript, font= myfont12, width=25)
         self.entry_scriptPath.insert(Tkinter.END, self.scriptPath)
-        self.entry_scriptPath.place(x= self.lbl_loadscript.winfo_x(), y= self.lbl_loadscript.winfo_y()+ self.lbl_loadscript.winfo_reqheight()+ self.interval_y)
+        self.entry_scriptPath.place(x= self.lbl_loadscript.winfo_x(), y= self.lbl_loadscript.winfo_y()+ self.lbl_loadscript.winfo_reqheight()+ gui_vars.interval_y)
         self.root.update()
         self.btn_choosescript= Tkinter.Button(self.tab_loadscript, text='...', command= self.btn_choosescript_click, font= myfont8, width=0, height=0)
-        self.btn_choosescript.place(x= self.entry_scriptPath.winfo_x()+ self.entry_scriptPath.winfo_reqwidth()+ self.interval_x, y= self.entry_scriptPath.winfo_y())
+        self.btn_choosescript.place(x= self.entry_scriptPath.winfo_x()+ self.entry_scriptPath.winfo_reqwidth()+ gui_vars.interval_x, y= self.entry_scriptPath.winfo_y())
         self.root.update()
         self.btn_loadscript= Tkinter.Button(self.tab_loadscript, text='Load', command= self.btn_loadscript_click, font= myfont12_Bold, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active)
-        self.btn_loadscript.place(x= self.entry_scriptPath.winfo_x(), y= self.entry_scriptPath.winfo_y()+ self.entry_scriptPath.winfo_reqheight()+ self.interval_y)
+        self.btn_loadscript.place(x= self.entry_scriptPath.winfo_x(), y= self.entry_scriptPath.winfo_y()+ self.entry_scriptPath.winfo_reqheight()+ gui_vars.interval_y)
         self.root.update()
         self.btn_savescript= Tkinter.Button(self.tab_loadscript, text='Save', command= self.btn_savescript_click, font= myfont12_Bold, fg= 'white', activeforeground='white', bg= bgGray, activebackground= bgGray_active)
-        self.btn_savescript.place(x= self.btn_loadscript.winfo_x()+ self.btn_loadscript.winfo_reqwidth()+ self.interval_x*2, y= self.btn_loadscript.winfo_y())
+        self.btn_savescript.place(x= self.btn_loadscript.winfo_x()+ self.btn_loadscript.winfo_reqwidth()+ gui_vars.interval_x*2, y= self.btn_loadscript.winfo_y())
         self.root.update()
         self.btn_runscript= Tkinter.Button(self.tab_loadscript, text='RUN', command= self.btn_runscript_click, font= myfont12_Bold, fg= 'white', activeforeground='white', bg= self.bgGreen, activebackground= self.bgGreen_active)
-        self.btn_runscript.place(x= self.btn_savescript.winfo_x()+ self.btn_savescript.winfo_reqwidth()+ self.interval_x*2, y= self.btn_savescript.winfo_y())
+        self.btn_runscript.place(x= self.btn_savescript.winfo_x()+ self.btn_savescript.winfo_reqwidth()+ gui_vars.interval_x*2, y= self.btn_savescript.winfo_y())
         self.btn_runscript.focus_set()
         self.root.update()
         
         #self.txtbox_script = ScrolledText.ScrolledText(self.tab_loadscript, width=40, height= 30 ,font = myfont10, bd = 2, relief = RIDGE, vscrollmode= 'dynamic')
         self.txtbox_script = Pmw.ScrolledText(self.tab_loadscript, text_width=40, text_height= 20, hscrollmode= 'dynamic', vscrollmode= 'static', text_wrap= 'none', labelpos= 'n', label_text= "NaN")#, rowheader= 1)
-        self.txtbox_script.place(x= self.btn_loadscript.winfo_x(), y= self.btn_loadscript.winfo_y()+ self.btn_loadscript.winfo_reqheight()+ self.interval_y)
+        self.txtbox_script.place(x= self.btn_loadscript.winfo_x(), y= self.btn_loadscript.winfo_y()+ self.btn_loadscript.winfo_reqheight()+ gui_vars.interval_y)
 
         # ==================================================
         # [TAB IMAGE] Image Processing 
         # ==================================================
         self.btn_saveImg= Tkinter.Button(self.tab_imageprocess, text='Save Image', command= self.btn_saveImg_click,font= myfont14, width= btn_width, height= btn_height)
-        self.btn_saveImg.place(x= self.interval_x, y= self.interval_y)
+        self.btn_saveImg.place(x= gui_vars.interval_x, y= gui_vars.interval_y)
         self.root.update()
 
-        self.lbl_scracth_detect= Tkinter.Label(self.tab_imageprocess, text="[ Binarization Setting ]", font= myfont14)
-        self.lbl_scracth_detect.place(x= self.interval_x, y= self.btn_saveImg.winfo_y()+ self.btn_saveImg.winfo_reqheight()+ self.interval_y)
+        self.lbl_scracth_detect= Tkinter.Label(self.tab_imageprocess, text="[ Detect Green Plant ]", font= myfont14)
+        self.lbl_scracth_detect.place(x= gui_vars.interval_x, y= self.btn_saveImg.winfo_y()+ self.btn_saveImg.winfo_reqheight()+ gui_vars.interval_y)
         self.root.update()
         
-        self.btn_detect= Tkinter.Button(self.tab_imageprocess, text='Binarization', command= self.method_SimpleBinary,font= myfont12_Bold, width= btn_width, height= btn_height, fg= 'white',activeforeground='white', bg= bgGray,activebackground= bgGray_active)
-        self.btn_detect.place(x= self.lbl_scracth_detect.winfo_x()+ self.lbl_scracth_detect.winfo_reqwidth()+ self.interval_x, y= self.lbl_scracth_detect.winfo_y())
+        self.btn_detect= Tkinter.Button(self.tab_imageprocess, text='Detect', command= self.detectGreenPlant,font= myfont12_Bold, width= btn_width, height= btn_height, fg= 'white',activeforeground='white', bg= bgGray,activebackground= bgGray_active)
+        self.btn_detect.place(x= self.lbl_scracth_detect.winfo_x()+ self.lbl_scracth_detect.winfo_reqwidth()+ gui_vars.interval_x, y= self.lbl_scracth_detect.winfo_y())
+        self.root.update()
+        #=============================================
+        # [group] Plant Index 
+        #=============================================
+        self.grp_PlantIndex= Tkinter.LabelFrame(self.tab_imageprocess, text= 'Plant Index', width=Left_width-gui_vars.interval_x*2 ,height=40, relief=Tkinter.RIDGE, padx=0, pady=0)#, font= self.__myfont12_Bold)
+        
+        y_rdbox= self.lbl_scracth_detect.winfo_y()+ self.lbl_scracth_detect.winfo_height()+ gui_vars.interval_y
+        self.lst_PlantIndex_rdbox = list()
+        self.PlantIndex= Tkinter.IntVar()
+        for idx, name in enumerate(gui_vars.rdbox_PlantIndexItem):
+            self.lst_PlantIndex_rdbox.append(Tkinter.Radiobutton(self.grp_PlantIndex, text = name, value=idx, variable = self.PlantIndex, indicatoron=1))
+            self.lst_PlantIndex_rdbox[idx].place(x= gui_vars.interval_x+ gui_vars.interval_rdbox*idx, y=0)
+        self.lst_PlantIndex_rdbox[0].select()
+        self.grp_PlantIndex.place(x= gui_vars.interval_x, y=y_rdbox)
+        self.root.update()
+        #=============================================
+        # [group] Binary Method  
+        #=============================================
+        self.grp_BinaryMethod= Tkinter.LabelFrame(self.tab_imageprocess, text= 'Binary Method', width=Left_width-gui_vars.interval_x*2 ,height=40, relief=Tkinter.RIDGE, padx=0, pady=0)#, font= self.__myfont12_Bold)
+        
+        self.lst_BinaryMethod_rdbox = list()
+        self.BinaryMethodIndex= Tkinter.IntVar()
+        for idx, name in enumerate(gui_vars.rdbox_BinaryMethodItem):
+            self.lst_BinaryMethod_rdbox.append(Tkinter.Radiobutton(self.grp_BinaryMethod, text = name, value=idx, variable = self.BinaryMethodIndex, indicatoron=1))
+            self.lst_BinaryMethod_rdbox[idx].place(x= gui_vars.interval_x+ (gui_vars.interval_rdbox+9)*idx, y=0)
+        self.lst_BinaryMethod_rdbox[0].select()
+        self.grp_BinaryMethod.place(x= gui_vars.interval_x, y=self.grp_PlantIndex.winfo_y()+ self.grp_PlantIndex.winfo_reqheight()+ gui_vars.interval_y*1)
         self.root.update()
         
         self.scale_threshold_graylevel = Tkinter.Scale(self.tab_imageprocess , from_= 0 , to = 255 , orient = Tkinter.HORIZONTAL , label = "Gray_level", font = myfont12, width = 7, length = 300 )
         self.scale_threshold_graylevel.set(self.threshold_graylevel)
-        self.scale_threshold_graylevel.place(x= self.lbl_scracth_detect.winfo_x(), y= self.lbl_scracth_detect.winfo_y()+ self.lbl_scracth_detect.winfo_height()+self.interval_y*2)
+        self.scale_threshold_graylevel.place(x= self.grp_BinaryMethod.winfo_x(), y= self.grp_BinaryMethod.winfo_y()+ self.grp_BinaryMethod.winfo_reqheight()+gui_vars.interval_y*2)
         #self.scale_threshold_graylevel.config(state= 'disabled')
         self.root.update()
 
-        self.scale_threshold_size = Tkinter.Scale(self.tab_imageprocess, from_ = 0 , to = 500 , orient = Tkinter.HORIZONTAL , label = "contour_size", font = myfont12, width = 7, length = 300 )
-        self.scale_threshold_size.set(self.threshold_size)
+        self.scale_threshold_MinSize = Tkinter.Scale(self.tab_imageprocess, from_ = 0 , to = 99999 , orient = Tkinter.HORIZONTAL , label = "Min Contour_size", font = myfont12, width = 7, length = 300 )
+        self.scale_threshold_MinSize.set(self.threshold_MinSize)
 
-        self.scale_threshold_size.place(x= self.scale_threshold_graylevel.winfo_x(), y= self.scale_threshold_graylevel.winfo_y()+ self.scale_threshold_graylevel.winfo_height())
+        self.scale_threshold_MinSize.place(x= self.scale_threshold_graylevel.winfo_x(), y= self.scale_threshold_graylevel.winfo_y()+ self.scale_threshold_graylevel.winfo_height())
         self.root.update()
+        self.scale_threshold_MaxSize = Tkinter.Scale(self.tab_imageprocess, from_ = 0 , to = 99999 , orient = Tkinter.HORIZONTAL , label = "Max Contour_size", font = myfont12, width = 7, length = 300 )
+        self.scale_threshold_MaxSize.set(self.threshold_MaxSize)
+
+        self.scale_threshold_MaxSize.place(x= self.scale_threshold_MinSize.winfo_x(), y= self.scale_threshold_MinSize.winfo_y()+ self.scale_threshold_MinSize.winfo_height())
         
         # ==================================================
         # [ROOT] Main Image Frame 
         # ==================================================
-        self.frame_width, self.frame_height= int(0.5*(self.screen_width-Left_width- self.interval_x*2)), int(0.5*(self.screen_height-self.FileMenu.winfo_reqheight()- self.statuslabel.winfo_reqheight() -self.interval_y*2))
+        #self.frame_width, self.frame_height= int(0.5*(self.screen_width-Left_width- gui_vars.interval_x*2)), int(0.5*(self.screen_height-self.FileMenu.winfo_reqheight()- self.statuslabel.winfo_reqheight() -gui_vars.interval_y*2))
+        self.frame_width, self.frame_height= int(0.5*(self.screen_width-Left_width- gui_vars.interval_x*2)), int(0.5*(self.screen_height-self.FileMenu.winfo_reqheight()*0- self.statuslabel.winfo_reqheight() -gui_vars.interval_y*1))
         print '*** Frame w,h: ',self.frame_width, self.frame_height 
         self.frame= np.zeros((int(self.frame_height), int(self.frame_width),3),np.uint8)
         #frame= cv2.resize(frame,(self.frame_width,self.frame_height),interpolation=cv2.INTER_LINEAR)
@@ -409,7 +443,7 @@ class App:
         result = ImageTk.PhotoImage(result)
         self.panel = Tkinter.Label(self.root , image = result)
         self.panel.image = result
-        self.panel.place(x=Left_width+self.interval_x, y= 0)
+        self.panel.place(x=Left_width+gui_vars.interval_x, y= 0)
         self.root.update()
         # ==================================================
         # [ROOT] Display merge Image Frame 
@@ -445,6 +479,11 @@ class App:
         
         self.CamMntr= CameraLink(self.CameraID)
         #self.CamMntr.connect_camera()
+        
+        # ==================================================
+        #  Green Plant Indetifier
+        # ==================================================
+        self.plantsArea = PlantIdentifier()
 
         # ==================================================
         #  UI callback setting
@@ -453,11 +492,11 @@ class App:
         self.lbl_CurrPos.after(5, self.UI_callback)
         self.statuslabel.after(5, self.check_status)
         self.panel_mergeframe.bind('<Button-1>',self.mouse_LeftClick)
-        self.root.bind('<F1>',self.rdbtn_click)
-        self.root.bind('<F2>',self.rdbtn_click)
-        self.root.bind('<F3>',self.rdbtn_click)
-        self.root.bind('<F4>',self.rdbtn_click)
-        self.root.bind('<F5>',self.rdbtn_click)
+        self.root.bind('<F1>',self.rdbtn_MvAmount_click)
+        self.root.bind('<F2>',self.rdbtn_MvAmount_click)
+        self.root.bind('<F3>',self.rdbtn_MvAmount_click)
+        self.root.bind('<F4>',self.rdbtn_MvAmount_click)
+        self.root.bind('<F5>',self.rdbtn_MvAmount_click)
         #self.root.bind('<Up>',self.btn_MoveUp_click)
         self.root.bind('<Up>',self.btn_MoveAmount_click)
         self.root.bind('<Down>',self.btn_MoveAmount_click)
@@ -497,7 +536,8 @@ class App:
     def store_para(self, arg_filepath, arg_filename):
         saveDict={}
         saveDict['thrshd_gray']= self.scale_threshold_graylevel.get()
-        saveDict['thrshd_size']= self.scale_threshold_size.get()
+        saveDict['thrshd_Minsize']= self.scale_threshold_MinSize.get()
+        saveDict['thrshd_Maxsize']= self.scale_threshold_MaxSize.get()
         saveDict['Scan_X (Beg,Interval,Amount)']= [int(self.entry_1stXpos.get()), int(self.entry_ScanInterval_X.get()), int(self.entry_ScanAmount_X.get())]
         saveDict['Scan_Y (Beg,Interval,Amount)']= [int(self.entry_1stYpos.get()), int(self.entry_ScanInterval_Y.get()), int(self.entry_ScanAmount_Y.get())]
         saveDict['limit Maximum (X,Y)']= self.limit
@@ -552,7 +592,7 @@ class App:
             #print '>> mouse(X,Y): ',mouse_x, mouse_y
             #print '>> split(X,Y): ', self.mergeframe_splitX, self.mergeframe_splitY
 
-            begX= self.interval_x
+            begX= gui_vars.interval_x
             begY= self.mergeframe_spaceY
             tmp_X, tmp_Y= int((mouse_x-begX)/self.mergeframe_splitX), int((mouse_y-begY)/self.mergeframe_splitY)
             #print '>> RANGE(X,Y): ',begY+ self.mergeframe_splitY*self.scan_Y[2] ,begX+ self.mergeframe_splitX*self.scan_X[2]
@@ -656,20 +696,43 @@ class App:
         frame= self.CamMntr.get_frame()
         self.imageProcessor.set_background(frame)
 
+    def detectGreenPlant(self):
+        self.plantsArea.setimage(self.singleframe)
+        ExGimage= self.plantsArea.ExGimage(True)
+        ExGimage_thr= imgProcess_tool.binarialization(ExGimage.astype(np.uint8), 1)
+        cv2.imwrite('Debug/img_thr.jpg',ExGimage_thr)
+        self.threshold_MinSize, self.threshold_MaxSize=int(self.scale_threshold_MinSize.get()), int(self.scale_threshold_MaxSize.get())
+        #result_ExG = imgProcess_tool.findContours(ExGimage_thr, self.plantsArea.image_raw, [int(self.scale_threshold_MinSize.get()), int(self.scale_threshold_MinSize.get())],True)
+        result_ExG = imgProcess_tool.findContours(ExGimage_thr, self.plantsArea.image_raw, (self.threshold_MinSize, self.threshold_MaxSize),True)
+        #self.singleframe= result_ExG
+        self.display_panel_singleframe(result_ExG)
+        pass
+
     def method_OtsuBinary(self):
         print 'Start Otsu Binary.... '
-        #result= self.CamMntr.subract_test()
-        self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
+        '''
+        self.imageProcessor.set_threshold_size(int(self.scale_threshold_MinSize.get()))
         self.imageProcessor.set_threshold_graylevel(int(self.scale_threshold_graylevel.get()))
         result= self.imageProcessor.get_contour(self.singleframe, True, gui_vars.savePath, 'Otsu_Binary_'+self.imagename, 1)
+        '''
+        self.threshold_MaxSize= int(self.scale_threshold_MaxSize.get())
+        img_thr= imgProcess_tool.binarialization(self.singleframe, 1)
+        result= imgProcess_tool.findContours(img_thr, self.singleframe, [0,self.threshold_MaxSize] )
         self.display_panel_singleframe(result)
 
     def method_SimpleBinary(self):
+        print 'rdbtn: ',self.PlantIndex.get()
         print 'Start Binarization with ... '
-        #result= self.CamMntr.subract_test()
-        self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
+        '''
+        self.imageProcessor.set_threshold_size(int(self.scale_threshold_MinSize.get()))
         self.imageProcessor.set_threshold_graylevel(int(self.scale_threshold_graylevel.get()))
         result= self.imageProcessor.get_contour(self.singleframe, True, gui_vars.savePath, 'Simple_Binary_'+self.imagename, 0)
+        '''
+        self.threshold_MaxSize= int(self.scale_threshold_MaxSize.get())
+        self.threshold_graylevel= int(self.scale_threshold_graylevel.get())
+        img_thr= imgProcess_tool.binarialization(self.singleframe, 0, self.threshold_graylevel)
+        result= imgProcess_tool.findContours(img_thr, self.singleframe, [0,self.threshold_MaxSize])
+
         self.display_panel_singleframe(result)
 
     def set_ArdConnect(self):
@@ -728,13 +791,13 @@ class App:
         cv2.putText(self.mergeframe, 'Display Scanning Result',(10,20),cv2.FONT_HERSHEY_SIMPLEX, 0.5,(255,255,255),1)
 
     def set_mergeframe_size(self, arg_x, arg_y):
-        self.mergeframe_splitX= int((self.mergeframe_width-self.interval_x*2)/arg_y)
+        self.mergeframe_splitX= int((self.mergeframe_width-gui_vars.interval_x*2)/arg_y)
         self.mergeframe_splitY= int((self.mergeframe_height-100)/arg_x)
     
     def display_panel_mergeframe(self, arg_frame, arg_stepX, arg_stepY): 
         tmp_frame= cv2.cvtColor(arg_frame, cv2.COLOR_BGR2RGB)
         tmp_frame= cv2.resize(tmp_frame,(self.mergeframe_splitX,self.mergeframe_splitY),interpolation=cv2.INTER_LINEAR)
-        begX= self.interval_x+self.mergeframe_splitX*arg_stepX
+        begX= gui_vars.interval_x+self.mergeframe_splitX*arg_stepX
         begY= self.mergeframe_spaceY+ self.mergeframe_splitY* arg_stepY 
         self.mergeframe[begY:begY+ self.mergeframe_splitY, begX: begX+ self.mergeframe_splitX]= tmp_frame
         #begY= self.mergeframe_height- 50- self.mergeframe_splitY*arg_stepY
@@ -749,7 +812,7 @@ class App:
         self.panel_mergeframe.configure(image = result)
         self.panel_mergeframe.image = result
 
-    def rdbtn_click(self, event= None):
+    def rdbtn_MvAmount_click(self, event= None):
         if event is not None:
             if event.keysym == 'F1':
                 self.rdbtn_MvAmount_1.select()
@@ -884,7 +947,7 @@ class App:
 
 
     def btn_StartScan_click(self):
-        self.imageProcessor.set_threshold_size(int(self.scale_threshold_size.get()))
+        self.imageProcessor.set_threshold_size(int(self.scale_threshold_MinSize.get()))
         self.imageProcessor.set_threshold_graylevel(int(self.scale_threshold_graylevel.get()))
         self.input_Zpos= int(self.entry_Zpos.get())
         print 'Start'
@@ -941,7 +1004,17 @@ class App:
         self.singleframe = self.CamMntr.get_frame()
         self.saveImg_function(self.singleframe, gui_vars.savePath, self.imagename)
         self.display_panel_singleframe(self.singleframe)
-
+    
+    def btn_loadImg_click(self):
+        str_imagePath = tkFileDialog.askopenfilename(title = "Select image",filetypes = (("jpeg files","*.jpg"), ("png files","*.png"), ("tif files","*.tif"),("all files","*.*")))
+        print '>>>> ', str_imagePath
+        if str_imagePath !="":
+            img= utils_tool.readImage(str_imagePath)
+            if img is not False:
+                self.singleframe= img.copy()
+                self.display_panel_singleframe(self.singleframe)
+            else:
+                tkMessageBox.showerror('Image does not exist', 'The image\n{0}\n does not exist. Please check the path again')
 
     def btn_MoveTo_click(self):
         if self.ArdMntr.connect:
@@ -1048,7 +1121,6 @@ class App:
                             self.saveScanning= '{0}_{1}'.format(tmp_X, tmp_Y)
                             frame= self.CamMntr.get_frame()
                             self.saveImg_function(frame, gui_vars.savePath+'Scanning/',self.ScanTimeIndex+'_'+self.saveScanning)
-                            #result= self.imageProcessor.get_contour(frame, True, gui_vars.savePath+'Scanning/', 'Detect_'+self.saveScanning,1)
                             result= frame.copy()
                             self.display_panel_singleframe(result)
                             #self.display_panel_mergeframe(result, step_X, step_Y)
