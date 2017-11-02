@@ -22,6 +22,15 @@ class PlantIdentifier:
         self.image_raw= self.image.copy()
         (self.imgRGB_B, self.imgRGB_G, self.imgRGB_R)= cv2.split(self.image.copy())
 
+    def NDIimage(self, arg_debug= False):
+        G= self.imgRGB_G.astype('float')
+        R= self.imgRGB_R.astype('float')
+        NDIimage= 128*((G-R)/(G+R)+1)
+        NDIimage= cv2.normalize(NDIimage, NDIimage, 0, 255, cv2.NORM_MINMAX)
+        if arg_debug:
+            cv2.imwrite('Debug/debug_NDIimage.jpg', NDIimage)
+        return NDIimage 
+
     def ExGimage(self, arg_debug= False):
         print 'ExGimage'
         R_star= self.imgRGB_R.astype('float')/255
@@ -34,6 +43,11 @@ class PlantIdentifier:
         #print ExGimage 
         return ExGimage
 
+
+    def LABimage(self, arg_debug):
+        imgLAB = cv2.cvtColor(self.image, self.colorSpace)
+        (L, A, B) = cv2.split(imgLAB)
+        return L, A, B
 
     def extractPlantsArea(self, arg_mode=0,arg_INV= False, b_threshold=80, a_threshold=80):
         zeros = np.zeros(self.image.shape[:2], dtype = "uint8")

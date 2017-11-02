@@ -60,8 +60,11 @@ class App:
         # Parameters
         # =================================
         if utils_tool.check_path(gui_vars.saveParaPath):
-            self.img = Tkinter.PhotoImage(file = gui_vars.saveParaPath+'Icon_2.png')
-            self.root.tk.call('wm', 'iconphoto', self.root._w, self.img)
+            print 'ICON...'
+            self.img_icon = Tkinter.PhotoImage(file = gui_vars.saveParaPath+'Icon_2.png')
+            #img_icon = Tkinter.PhotoImage(file = gui_vars.saveParaPath+'img_Seed.png')
+            #print self.img_icon 
+            self.root.tk.call('wm', 'iconphoto', self.root._w, self.img_icon)
         self.config= ConfigSetting(gui_vars.saveParaPath, gui_vars.configName, gui_vars.defaultDict)
         params= self.config.read_json()
         #print 'para: ',params
@@ -396,7 +399,7 @@ class App:
         self.lst_PlantIndex_rdbox = list()
         self.PlantIndex= Tkinter.IntVar()
         for idx, name in enumerate(gui_vars.rdbox_PlantIndexItem):
-            self.lst_PlantIndex_rdbox.append(Tkinter.Radiobutton(self.grp_PlantIndex, text = name, value=idx, variable = self.PlantIndex, indicatoron=1))
+            self.lst_PlantIndex_rdbox.append(Tkinter.Radiobutton(self.grp_PlantIndex, text = name, value=idx, variable = self.PlantIndex, indicatoron=1, command= self.rdbtn_PlantINdex_click))
             self.lst_PlantIndex_rdbox[idx].place(x= gui_vars.interval_x+ gui_vars.interval_rdbox*idx, y=0)
         self.lst_PlantIndex_rdbox[0].select()
         self.grp_PlantIndex.place(x= gui_vars.interval_x, y=y_rdbox)
@@ -409,7 +412,7 @@ class App:
         self.lst_BinaryMethod_rdbox = list()
         self.BinaryMethodIndex= Tkinter.IntVar()
         for idx, name in enumerate(gui_vars.rdbox_BinaryMethodItem):
-            self.lst_BinaryMethod_rdbox.append(Tkinter.Radiobutton(self.grp_BinaryMethod, text = name, value=idx, variable = self.BinaryMethodIndex, indicatoron=1))
+            self.lst_BinaryMethod_rdbox.append(Tkinter.Radiobutton(self.grp_BinaryMethod, text = name, value=idx, variable = self.BinaryMethodIndex, indicatoron=1, command= self.rdbtn_BinaryMethodIndex_click))
             self.lst_BinaryMethod_rdbox[idx].place(x= gui_vars.interval_x+ (gui_vars.interval_rdbox+9)*idx, y=0)
         self.lst_BinaryMethod_rdbox[0].select()
         self.grp_BinaryMethod.place(x= gui_vars.interval_x, y=self.grp_PlantIndex.winfo_y()+ self.grp_PlantIndex.winfo_reqheight()+ gui_vars.interval_y*1)
@@ -696,16 +699,39 @@ class App:
         frame= self.CamMntr.get_frame()
         self.imageProcessor.set_background(frame)
 
+    def rdbtn_PlantINdex_click(self):
+        pass
+    def rdbtn_BinaryMethodIndex_click(self):
+        print 'BinaryMethodIndex: ',self.BinaryMethodIndex.get()
+        if self.BinaryMethodIndex.get()==0:
+            self.scale_threshold_graylevel.config(state= 'normal', label='Gray_level', fg='black')
+        else:
+            self.scale_threshold_graylevel.config(state= 'disabled', label='Gray_level (Disable)', fg= 'gray')
+
+
     def detectGreenPlant(self):
         self.plantsArea.setimage(self.singleframe)
-        ExGimage= self.plantsArea.ExGimage(True)
-        ExGimage_thr= imgProcess_tool.binarialization(ExGimage.astype(np.uint8), 1)
-        cv2.imwrite('Debug/img_thr.jpg',ExGimage_thr)
+        if self.PlantIndex.get()==0:
+            _, image_plantIndex,_= self.plantsArea.LABimage(True)
+        elif self.PlantIndex.get()==1:
+            image_plantIndex= self.plantsArea.NDIimage(True)
+        elif self.PlantIndex.get()==2:
+            image_plantIndex= self.plantsArea.ExGimage(True)
+        
+        self.threshold_graylevel= self.scale_threshold_graylevel.get()
+        image_plantIndex_thr= imgProcess_tool.binarialization(image_plantIndex.astype(np.uint8), self.BinaryMethodIndex.get(), self.threshold_graylevel)
+        cv2.imwrite('Debug/img_thr.jpg',image_plantIndex_thr)
+        
         self.threshold_MinSize, self.threshold_MaxSize=int(self.scale_threshold_MinSize.get()), int(self.scale_threshold_MaxSize.get())
-        #result_ExG = imgProcess_tool.findContours(ExGimage_thr, self.plantsArea.image_raw, [int(self.scale_threshold_MinSize.get()), int(self.scale_threshold_MinSize.get())],True)
-        result_ExG = imgProcess_tool.findContours(ExGimage_thr, self.plantsArea.image_raw, (self.threshold_MinSize, self.threshold_MaxSize),True)
+        result= imgProcess_tool.findContours(image_plantIndex_thr, self.plantsArea.image_raw, (self.threshold_MinSize, self.threshold_MaxSize),True)
         #self.singleframe= result_ExG
-        self.display_panel_singleframe(result_ExG)
+        self.display_panel_singleframe(result)
+        self.set_mergeframe_size(2,2)
+        self.reset_mergeframe()
+        self.display_panel_mergeframe(self.singleframe.copy(), 0, 0)
+        self.display_panel_mergeframe(image_plantIndex.astype(np.uint8), 1, 0)
+        self.display_panel_mergeframe(image_plantIndex_thr, 0, 1)
+        self.display_panel_mergeframe(result, 1, 1)
         pass
 
     def method_OtsuBinary(self):
@@ -795,7 +821,12 @@ class App:
         self.mergeframe_splitY= int((self.mergeframe_height-100)/arg_x)
     
     def display_panel_mergeframe(self, arg_frame, arg_stepX, arg_stepY): 
-        tmp_frame= cv2.cvtColor(arg_frame, cv2.COLOR_BGR2RGB)
+        print '*** ',len(arg_frame.shape)
+        if len(arg_frame.shape)==3:
+            tmp_frame= cv2.cvtColor(arg_frame, cv2.COLOR_BGR2RGB)
+        else: 
+            tmp_frame= cv2.cvtColor(arg_frame, cv2.COLOR_GRAY2RGB)
+
         tmp_frame= cv2.resize(tmp_frame,(self.mergeframe_splitX,self.mergeframe_splitY),interpolation=cv2.INTER_LINEAR)
         begX= gui_vars.interval_x+self.mergeframe_splitX*arg_stepX
         begY= self.mergeframe_spaceY+ self.mergeframe_splitY* arg_stepY 
