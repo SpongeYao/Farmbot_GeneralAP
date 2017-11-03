@@ -14,7 +14,10 @@ interval_rdbox= 60
 #===================================================
 savePath= 'Data/'
 saveParaPath= 'Para/'
+saveScanningPath= savePath+ 'Scanning/'
+saveImageProccesPath= savePath+ 'ImageProcess/'
 configName= 'config.json'
+scanIndex= 'Raw'
 #==========================
 #  Config Text
 #==========================

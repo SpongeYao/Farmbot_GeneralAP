@@ -98,6 +98,7 @@ class App:
         self.StartRunScript_judge= False
         self.saveScanning= 'XXX'
         self.strStatus= 'Idling...'
+        self.readmergeframeIndex= ''
 
         self.root.update()
         self.screen_width, self.screen_height= self.root.winfo_width(), self.root.winfo_height()
@@ -600,19 +601,25 @@ class App:
             tmp_X, tmp_Y= int((mouse_x-begX)/self.mergeframe_splitX), int((mouse_y-begY)/self.mergeframe_splitY)
             #print '>> RANGE(X,Y): ',begY+ self.mergeframe_splitY*self.scan_Y[2] ,begX+ self.mergeframe_splitX*self.scan_X[2]
             if begX< mouse_x < begX+ self.mergeframe_splitX*self.scan_Y[2] and begY< mouse_y< begY+ self.mergeframe_splitY*self.scan_X[2]:
-                tmp_filename= '{0}_{1}'.format(tmp_Y*self.scan_X[1], tmp_X*self.scan_Y[1]) 
+                if self.readmergeframeIndex == gui_vars.scanIndex:
+                    readPath= gui_vars.saveScanningPath
+                    tmp_filename= '{0}_{1}'.format(tmp_Y*self.scan_X[1], tmp_X*self.scan_Y[1]) 
+                else:
+                    readPath= gui_vars.saveImageProccesPath 
+                    tmp_filename= '{0}_{1}'.format(tmp_Y, tmp_X) 
                 #print 'click file: ', tmp_filename
-                tmp_frame= cv2.imread(gui_vars.savePath+'Scanning/Raw_'+tmp_filename+'.jpg')
-                self.imagename= tmp_filename
-                self.singleframe= tmp_frame.copy()
-                self.display_panel_singleframe(tmp_frame)
+                tmp_frame= utils_tool.readImage(readPath+ self.readmergeframeIndex+'_'+self.saveTimeIndex+'_'+tmp_filename+'.jpg')
+                if tmp_frame is not False:
+                    self.imagename= self.readmergeframeIndex+'_'+self.saveTimeIndex+tmp_filename
+                    self.singleframe= tmp_frame.copy()
+                    self.display_panel_singleframe(tmp_frame)
 
-                mergeframe_canvas= self.mergeframe.copy()
-                cv2.rectangle(mergeframe_canvas,(begX+self.mergeframe_splitX*tmp_X,begY+self.mergeframe_splitY*tmp_Y),(begX+self.mergeframe_splitX*(tmp_X+1), begY+self.mergeframe_splitY*(tmp_Y+1)),(0,255,100),2 )
-                result = Image.fromarray(mergeframe_canvas)
-                result = ImageTk.PhotoImage(result)
-                self.panel_mergeframe.configure(image = result)
-                self.panel_mergeframe.image = result
+                    mergeframe_canvas= self.mergeframe.copy()
+                    cv2.rectangle(mergeframe_canvas,(begX+self.mergeframe_splitX*tmp_X,begY+self.mergeframe_splitY*tmp_Y),(begX+self.mergeframe_splitX*(tmp_X+1), begY+self.mergeframe_splitY*(tmp_Y+1)),(0,255,100),2 )
+                    result = Image.fromarray(mergeframe_canvas)
+                    result = ImageTk.PhotoImage(result)
+                    self.panel_mergeframe.configure(image = result)
+                    self.panel_mergeframe.image = result
             
 
     def check_status(self):
@@ -732,6 +739,15 @@ class App:
         self.display_panel_mergeframe(image_plantIndex.astype(np.uint8), 1, 0)
         self.display_panel_mergeframe(image_plantIndex_thr, 0, 1)
         self.display_panel_mergeframe(result, 1, 1)
+        self.saveTimeIndex= datetime.now().strftime('%Y%m%d%H%M%S')
+        self.readmergeframeIndex= gui_vars.rdbox_PlantIndexItem[self.PlantIndex.get()]
+        
+        print '=== ', gui_vars.saveImageProccesPath, self.readmergeframeIndex+'_'+self.saveTimeIndex
+        self.saveImg_function(self.singleframe, gui_vars.saveImageProccesPath, self.readmergeframeIndex+'_'+self.saveTimeIndex+'_0_0')
+        self.saveImg_function(image_plantIndex.astype(np.uint8), gui_vars.saveImageProccesPath, self.readmergeframeIndex+'_'+self.saveTimeIndex+'_0_1')
+        self.saveImg_function(image_plantIndex_thr, gui_vars.saveImageProccesPath, self.readmergeframeIndex+'_'+self.saveTimeIndex+'_1_0')
+        self.saveImg_function(result, gui_vars.saveImageProccesPath, self.readmergeframeIndex+'_'+self.saveTimeIndex+'_1_1')
+        self.checkmouse_panel_mergeframe= True
         pass
 
     def method_OtsuBinary(self):
@@ -981,6 +997,7 @@ class App:
         self.imageProcessor.set_threshold_size(int(self.scale_threshold_MinSize.get()))
         self.imageProcessor.set_threshold_graylevel(int(self.scale_threshold_graylevel.get()))
         self.input_Zpos= int(self.entry_Zpos.get())
+        self.readmergeframeIndex= gui_vars.scanIndex 
         print 'Start'
         if self.StartScan_judge:
             #===================================
@@ -1008,8 +1025,8 @@ class App:
                     self.ArdMntr.move_Coord(self.scan_X[0], self.scan_Y[0], self.input_Zpos)
                     if self.scan_X[0]+self.scan_X[1]*self.scan_X[2]<self.limit[0] | self.scan_Y[0]+self.scan_Y[1]*self.scan_Y[2]<self.limit[1]:
                         self.StartScan_judge= True
-                        #self.ScanTimeIndex= datetime.now().strftime("%Y%m%d%H%M%S")
-                        self.ScanTimeIndex= datetime.now().strftime('%Y%m%d%H%M%S')
+                        #self.saveTimeIndex= datetime.now().strftime("%Y%m%d%H%M%S")
+                        self.saveTimeIndex= datetime.now().strftime('%Y%m%d%H%M%S')
                         #=================================
                         # New Thread of Scanning process
                         #================================
@@ -1151,7 +1168,7 @@ class App:
                             #self.saveScanning= self.ArdMntr.cmd_state.strCurX+'_'+self.ArdMntr.cmd_state.strCurY
                             self.saveScanning= '{0}_{1}'.format(tmp_X, tmp_Y)
                             frame= self.CamMntr.get_frame()
-                            self.saveImg_function(frame, gui_vars.savePath+'Scanning/',self.ScanTimeIndex+'_'+self.saveScanning)
+                            self.saveImg_function(frame, gui_vars.saveScanningPath,self.readmergeframeIndex+'_'+self.saveTimeIndex+'_'+self.saveScanning)
                             result= frame.copy()
                             self.display_panel_singleframe(result)
                             #self.display_panel_mergeframe(result, step_X, step_Y)
