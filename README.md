@@ -1,6 +1,7 @@
 Offlien GUI of Farmbot for Development
 ==========================
 ![GUI of gui_main.py](./Manual/Introduction.png)  
+![GUI of gui_main.py](./Manual/gui_function.png)
 The Python code with a user interface is porvided with following functions:
 1. 3-axis stepper-motor control
 2. auto scanning function by setting start point, scanning interval and scanning amount
