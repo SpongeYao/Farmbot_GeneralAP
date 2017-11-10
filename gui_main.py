@@ -237,22 +237,27 @@ class App:
         self.root.update()
         
         # ==================================================
-        # [TAB CONTROL] Seeding, Watering, Grab Image
+        # [TAB CONTROL] Seeding, Watering, Lighting, Grab Image
         # ==================================================
         photo_seed= self.IconResize(gui_vars.saveParaPath+'img_Seed.png')
         self.btn_Seed= Tkinter.Button(self.tab_control,image= photo_seed, cursor= 'hand2', command= self.btn_Seed_click)
         self.btn_Seed.image= photo_seed
-        self.btn_Seed.place(x= self.btn_MoveUp.winfo_x()- int(self.btn_MoveUp.winfo_reqwidth()*1.5)- gui_vars.interval_x, y=self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_reqheight()+ gui_vars.interval_y*2)
+        self.btn_Seed.place(x= self.btn_MoveUp.winfo_x()- int(self.btn_MoveUp.winfo_reqwidth()*2)- gui_vars.interval_x, y=self.btn_MoveDown.winfo_y()+ self.btn_MoveDown.winfo_reqheight()+ gui_vars.interval_y*2)
         self.root.update()
         photo_water= self.IconResize(gui_vars.saveParaPath+'img_Water.png')
         self.btn_Water= Tkinter.Button(self.tab_control,image= photo_water, cursor= 'hand2', command= self.btn_Water_click)
         self.btn_Water.image= photo_water
         self.btn_Water.place(x= self.btn_Seed.winfo_x()+ int(self.btn_Seed.winfo_reqwidth()*1.5)+ gui_vars.interval_x, y=self.btn_Seed.winfo_y())
         self.root.update()
+        photo_light= self.IconResize(gui_vars.saveParaPath+'img_Light.png')
+        self.btn_Light= Tkinter.Button(self.tab_control,image= photo_light, cursor= 'hand2', command= self.btn_Light_click)
+        self.btn_Light.image= photo_light 
+        self.btn_Light.place(x= self.btn_Water.winfo_x()+ int(self.btn_Water.winfo_reqwidth()*1.5)+ gui_vars.interval_x, y=self.btn_Seed.winfo_y())
+        self.root.update()
         photo_cam= self.IconResize(gui_vars.saveParaPath+'img_Cam.png')
         self.btn_CamGrab= Tkinter.Button(self.tab_control,image= photo_cam, cursor= 'hand2', command= self.btn_saveImg_click)
         self.btn_CamGrab.image= photo_cam
-        self.btn_CamGrab.place(x= self.btn_Water.winfo_x()+ int(self.btn_Water.winfo_reqwidth()*1.5)+ gui_vars.interval_x, y=self.btn_Seed.winfo_y())
+        self.btn_CamGrab.place(x= self.btn_Light.winfo_x()+ int(self.btn_Light.winfo_reqwidth()*1.5)+ gui_vars.interval_x, y=self.btn_Seed.winfo_y())
         self.root.update()
 
         # ==================================================
@@ -919,7 +924,12 @@ class App:
         if self.ArdMntr.connect:
             self.ArdMntr.switch_Water(self.pinNumb_water,not(self.ArdMntr.WaterOn) , -1)
             print 'Watering... '
-    
+    def btn_Light_click(self):
+        if self.ArdMntr.connect:
+            self.ArdMntr.switch_Seed(self.pinNumb_fan, not(self.ArdMntr.LightOn))
+            print 'Lighting... '
+            pass 
+
     def btn_choosescript_click(self):
         str_scriptPath = tkFileDialog.askopenfilename(title = "Select file",filetypes = (("all files","*.*"),("Text File", "*.txt"),("jpeg files","*.jpg")))
         print '>>>> ', str_scriptPath

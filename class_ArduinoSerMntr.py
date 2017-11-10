@@ -84,6 +84,7 @@ class MonitorThread(threading.Thread):
         self.connect = False
         self.WaterOn= False
         self.SeedOn= False
+        self.LightOn= False
         self.FanOn= False
         self.channel=['/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2', '/dev/tty0', '/dev/ttyUSB0']
         self.connect_serial()
@@ -159,7 +160,15 @@ class MonitorThread(threading.Thread):
         else:
             self.serial_send('F41 P{0} V0 M0'.format(arg_pinNumb))
             self.SeedOn= False
-                
+    def switch_Light(self, arg_pinNumb=8, arg_on=True):
+        if arg_On:
+            self.serial_send('F41 P{0} V1 M0'.format(arg_pinNumb))
+            self.LightOn= True
+        else:
+            self.serial_send('F41 P{0} V0 M0'.format(arg_pinNumb))
+            self.LightOn= False
+
+
     def move_Coord(self, arg_Xpos, arg_Ypos, arg_Zpos):
         cmd= 'G00 X{0} Y{1} Z{2}'.format(arg_Xpos, arg_Ypos, arg_Zpos)
         self.serial_send(cmd)

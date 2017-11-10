@@ -1,12 +1,12 @@
 Offlien GUI of Farmbot for Development
 ==========================
-![GUI of gui_main.py](./Manual/Introduction.png)
+![GUI of gui_main.py](./Manual/Introduction.png)  
 The Python code with a user interface is porvided with following functions:
 1. 3-axis stepper-motor control
 2. auto scanning function by setting start point, scanning interval and scanning amount
 3. real-time image display 
 4. Load & Run script function
-5. image processing function(otsu method is provided here)
+5. Detect Green Plant function(LAB, ExG and NDV method are provided here)
 6. Motor Setting function (MAX speed, Acceleration)
 7. Camera Setting (Camera ID)
 8. Peripheral Setting (PIN Number)
@@ -25,10 +25,6 @@ move amount(100, 500, 1k, 10k, 100k):  F1~F5
 Up, Down, Left, Right: ↑, ↓, ←, →  
 Z-Up, Z-Down: ctrl+↑, ctrl+↓  
   
-Load & Run Script
------------------------
-![GUI of gui_tabpage_Loadscript.py](./Manual/gui_tabpage_Loadscript.png)  
-
 Motor Setting 
 -----------------------
 ![GUI of gui_main.py](./Manual/gui_MotorSetting.png)  
@@ -41,16 +37,54 @@ Peripheral Setting
 -----------------------
 ![GUI of gui_main.py](./Manual/gui_Peripherals.png)  
 
-
-
-```command line: 
-sudo python gui_main.py
-```
-
-Arduino Code
+Load & Run Script
 -----------------------
-Reference by Farmbot:
-    https://github.com/FarmBot/farmbot-arduino-firmware 
+![GUI of gui_tabpage_Loadscript.py](./Manual/gui_tabpage_Loadscript.png)  
+The commands for arduino could be sent by FBTUG_Commander. However not only arduino code but aslo other functions, like grabbing image or making schedule in the future, could be applied here.  
+
+### Code sent to RPI (defined by FBTUG)
+Code type|Number|Parameters|Function
+---------|------|----------|--------
+C        |      |          |Camera command, commands for controlling camera
+C        |00    |          |Save image
+T        |00    |h m s     |(Not added yet) Delay h hours, m mintus, s seconds
+T        |01    |h m s     |(Not added yet) Wait until it is at h:m:s
+    
+### Codes sent to the arduino (defined by Farmbot https://github.com/FarmBot/farmbot-arduino-firmware )
+Code type|Number|Parameters|Function
+---------|------|----------|--------
+G        |      |          |G-Code, the codes working the same as a 3D printer
+G        |00    |X Y Z S   |Move to location at given speed for axis (don't have to be a straight line), in absolute coordinates
+G        |01    |X Y Z S   |Move to location on a straight line
+G        |28    |          |Move home all axis
+F        |      |          |Farm commands, commands specially added for the farmbot
+F        |01    |T         |Dose amount of water using time in millisecond
+F        |02    |N         |Dose amount of water using flow meter that measures pulses
+F        |09    |          |Reset emergency stop
+F        |11    |          |Home X axis
+F        |12    |          |Home Y axis
+F        |13    |          |Home Z axis
+F        |14    |          |Calibrate X axis
+F        |15    |          |Calibrate Y axis
+F        |16    |          |Calibrate Z axis
+F        |20    |          |List all parameters and value
+F        |21    |P         |Read parameter
+F        |22    |P V       |Write parameter
+F        |23    |P V       |Update parameter (during calibration)
+F        |31    |P         |Read status
+F        |32    |P V       |Write status
+F        |41    |P V M     |Set a value V on an arduino pin in mode M (digital=0/analog=1)
+F        |42    |P M       |Read a value from an arduino pin P in mode M (digital=0/analog=1)
+F        |43    |P M       |Set the I/O mode M (input=0/output=1) of a pin P in arduino
+F        |44    |P V W T M |Set the value V on an arduino pin P, wait for time T in milliseconds, set value W on the arduino pin P in mode M (digital=0/analog=1)
+F        |51    |E P V     |Set a value on the tool mount with I2C (not implemented)
+F        |52    |E P       |Read value from the tool mount with I2C (not implemented)
+F        |61    |P V       |Set the servo on the pin P (only pin 4 and 5) to the requested angle V
+F        |81    |          |Report end stop
+F        |82    |          |Report current position
+F        |83    |          |Report software version
+F        |84    |X Y Z     |Set axis current position to zero (yes=1/no=0)
+E        |      |          |Emergency stop
 
 ### Parameters for commands  
 Parameters|Description            |Unit of Measurement
@@ -82,8 +116,13 @@ e.g. Change the Parameter Value of Y acceleration to 300
 ```
 F22 P41 V300
 ```
-
-P.S. The oservation speed could be changed by setting MOVEMENT_MAX_SPD or MOVEMENT_STEPS_ACC_DEC
+P.S. The oservation speed could be changed by setting MOVEMENT_MAX_SPD or MOVEMENT_STEPS_ACC_DEC  
+  
+command line for start FBTUG_Commander: 
+-----------------------
+```
+sudo python gui_main.py
+```
 
 Command line for install Arudino and its related lib
 -----------------------

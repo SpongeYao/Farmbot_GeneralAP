@@ -5,6 +5,7 @@ import numpy as np
 import Tkinter as tk
 import tkFont
 import json
+import sys 
 from os import listdir, path, makedirs, remove
 from PIL import Image
 from PIL import ImageTk
@@ -138,7 +139,11 @@ def findContours(arg_img,arg_canvas, arg_MinMaxArea=False, arg_debug= False):
     canvas= arg_canvas.copy()
     if len(image)==3:
         image = cv2.cvtColor(self.image, cv2.COLOR_GRAY2BGR)
-    ctrs, hier = cv2.findContours(image.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    if sys.version_info.major == 2: 
+        ctrs, hier = cv2.findContours(image.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    else:
+        _, ctrs, hier = cv2.findContours(image.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
     if arg_MinMaxArea is not False:
         ctrs = filter(lambda x : arg_MinMaxArea[1]> cv2.contourArea(x) > arg_MinMaxArea[0] , ctrs)
     
