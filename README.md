@@ -6,7 +6,7 @@ The Python code with a user interface is porvided with following functions:
 2. auto scanning function by setting start point, scanning interval and scanning amount
 3. real-time image display 
 4. Load & Run script function
-5. Detect Green Plant function(LAB, ExG and NDV method are provided here)
+5. Detect Green Plant function(LAB, ExG and NDI method are provided here)
 6. Motor Setting function (MAX speed, Acceleration)
 7. Camera Setting (Camera ID)
 8. Peripheral Setting (PIN Number)
@@ -117,6 +117,11 @@ e.g. Change the Parameter Value of Y acceleration to 300
 F22 P41 V300
 ```
 P.S. The oservation speed could be changed by setting MOVEMENT_MAX_SPD or MOVEMENT_STEPS_ACC_DEC  
+
+Image Processing 
+-----------------------
+![GUI of gui_main.py](./Manual/gui_2.png)
+The functions to detect GREEN Plant in the image. Three Plant Indexes, LAB, ExG and NDI, are provided. Threshold method could be changed here too. 
   
 command line for start FBTUG_Commander: 
 -----------------------
