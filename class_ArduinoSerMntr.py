@@ -140,17 +140,17 @@ class MonitorThread(threading.Thread):
 
     def switch_Water(self, arg_pinNumb=9, arg_On=False, arg_delay=-1):
         if arg_On:
-            self.serial_send('F41 P9 V1 M0')
+            self.serial_send('F41 P{0} V1 M0'.format(arg_pinNumb))
             self.WaterOn= True
             if arg_delay== 0:
-                self.serial_send('F41 P9 V0 M0')
+                self.serial_send('F41 P{0} V0 M0'.format(arg_pinNumb))
                 self.WaterOn= False
             elif arg_delay> 0:
                 time.sleep(arg_delay)
-                self.serial_send('F41 P9 V0 M0')
+                self.serial_send('F41 P{0} V0 M0'.format(arg_pinNumb))
                 self.WaterOn= False
         else:
-            self.serial_send('F41 P9 V0 M0')
+            self.serial_send('F41 P{0} V0 M0'.format(arg_pinNumb))
             self.WaterOn= False
 
     def switch_Seed(self, arg_pinNumb=10, arg_On=True):
@@ -160,7 +160,7 @@ class MonitorThread(threading.Thread):
         else:
             self.serial_send('F41 P{0} V0 M0'.format(arg_pinNumb))
             self.SeedOn= False
-    def switch_Light(self, arg_pinNumb=8, arg_on=True):
+    def switch_Light(self, arg_pinNumb=8, arg_On=True):
         if arg_On:
             self.serial_send('F41 P{0} V1 M0'.format(arg_pinNumb))
             self.LightOn= True

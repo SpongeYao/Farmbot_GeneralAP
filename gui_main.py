@@ -926,9 +926,10 @@ class App:
             print 'Watering... '
     def btn_Light_click(self):
         if self.ArdMntr.connect:
-            self.ArdMntr.switch_Seed(self.pinNumb_fan, not(self.ArdMntr.LightOn))
+            self.ArdMntr.switch_Light(self.pinNumb_fan, not(self.ArdMntr.LightOn))
             print 'Lighting... '
             pass 
+
 
     def btn_choosescript_click(self):
         str_scriptPath = tkFileDialog.askopenfilename(title = "Select file",filetypes = (("all files","*.*"),("Text File", "*.txt"),("jpeg files","*.jpg")))
